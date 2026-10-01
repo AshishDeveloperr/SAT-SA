@@ -1,0 +1,62 @@
+{
+  "entity_code": "CSE-TELCO-01",
+  "entity_name": "Bharat Unified Telecommunications & 5G Core",
+  "sector_id": "sec_telecom",
+  "submission_period": "2026-Q3",
+  "reported_kpis": {
+    "headline_sla_compliance_pct": 99.8,
+    "reported_mttr_minutes": 8.1,
+    "total_alerts_handled": 15000
+  },
+  "assets": [
+    {
+      "external_id": "5G-UPF-CORE-01",
+      "name": "5G User Plane Function Core Gateway",
+      "type": "TELCO_CORE_GATEWAY",
+      "criticality": 5,
+      "last_seen": "2026-10-01T11:45:00.000Z"
+    },
+    {
+      "external_id": "IMS-SIP-PROXY-01",
+      "name": "IP Multimedia Subsystem VoLTE/SIP Proxy",
+      "type": "SIP_ROUTER",
+      "criticality": 4,
+      "last_seen": "2026-10-01T11:50:00.000Z"
+    }
+  ],
+  "alerts": [
+    {
+      "external_id": "ALT-TEL-2026-001",
+      "category": "DDoS Anomaly",
+      "severity": "CRITICAL",
+      "rule_name": "Volumetric SYN Flood on Signaling Gateway",
+      "created_at": "2026-10-01T07:10:00.000Z",
+      "closed_at": "2026-10-01T07:14:00.000Z",
+      "disposition": "FALSE_POSITIVE",
+      "notes": "Reviewed and closed as false positive. Verified with NOC automated scrubbing center.",
+      "assignee": "telco_ops_bot_01"
+    },
+    {
+      "external_id": "ALT-TEL-2026-002",
+      "category": "DDoS Anomaly",
+      "severity": "CRITICAL",
+      "rule_name": "DNS Amplification Against Core Resolvers",
+      "created_at": "2026-10-01T07:15:00.000Z",
+      "closed_at": "2026-10-01T07:18:00.000Z",
+      "disposition": "FALSE_POSITIVE",
+      "notes": "Reviewed and closed as false positive. Verified with NOC automated scrubbing center.",
+      "assignee": "telco_ops_bot_01"
+    },
+    {
+      "external_id": "ALT-TEL-2026-003",
+      "category": "BGP Hijack",
+      "severity": "CRITICAL",
+      "rule_name": "Unauthorized Autonomous System Route Announcement",
+      "created_at": "2026-10-01T07:30:00.000Z",
+      "closed_at": "2026-10-01T07:33:00.000Z",
+      "disposition": "FALSE_POSITIVE",
+      "notes": "Reviewed and closed as false positive. Verified with NOC automated scrubbing center.",
+      "assignee": "telco_ops_bot_01"
+    }
+  ]
+}

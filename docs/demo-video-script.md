@@ -1,0 +1,16 @@
+# SAT-SA: 2-Minute Demonstration Video Script
+**Supervisory Analytics Tool for SOC Assessment | NCIIPC (SIH26157)**
+
+*Target Duration: Exactly 120 Seconds (2:00 Minutes)*
+
+---
+
+| Timestamp | Visual Screen Action | Spoken Narration (Voiceover) |
+|---|---|---|
+| **0:00 – 0:12** | **Landing Screen & Air-Gapped Banner**<br>Camera focuses on SAT-SA header, highlighting the green `AIR-GAPPED ENCLAVE` badge and NCIIPC branding. | *"Welcome to SAT-SA, the Supervisory Analytics Tool for SOC Assessment, engineered for NCIIPC. Operating in a strictly air-gapped, zero-cloud environment, SAT-SA transforms periodic SOC submissions into actionable supervisory intelligence."* |
+| **0:12 – 0:32** | **Executive Dashboard & 8-Dimension Heatmap**<br>Screen displays the Composite Attention Score rankings (0–100) and the 8-Dimension Resilience Heatmap. Cursor hovers over `CSE-POWER-01`. | *"Here on the Executive Dashboard, entities are prioritized by supervisory attention score. Notice how CSE-POWER-01 ranks as a critical target with a score of 58, flagged by our 8-dimension capability heatmap across Investigation and Resilience."* |
+| **0:32 – 0:52** | **The Winning View: KPIs vs Underlying Evidence Gap**<br>User clicks the **KPIs vs Evidence Gap** tab. Points out `CSE-POWER-01` having 97.4% reported SLA but 18% evidence quality, yielding a +79.4% execution gap. | *"Here is our core differentiator: Headline KPIs versus Underlying Evidence. While the power grid entity reports a healthy 97% SLA compliance, our forensic analysis reveals that 82% of critical alerts were closed in under 10 minutes with zero investigation steps—exposing a massive execution gap."* |
+| **0:52 – 1:12** | **Findings Explorer & "Why Flagged" Drill-Down**<br>User clicks into Finding `EG-01` and opens the modal showing Observed Metrics vs Thresholds vs Sector Peer Median. | *"Drilling into any finding reveals our 'Why Flagged' explainability panel. The examiner sees the exact mathematical observed value against configured thresholds and peer baselines, accompanied by benign alternative explanations and direct links to the raw alert records."* |
+| **1:12 – 1:28** | **Negative Space Matrix**<br>User switches to the **Negative Space Matrix** tab, displaying the 4 silent SCADA controllers inactive for 42 days. | *"Under the Negative Space Matrix, SAT-SA detects what is absent. Notice these four critical SCADA controllers with zero telemetry for over 40 days—surfacing a dangerous monitoring blindspot invisible to conventional dashboards."* |
+| **1:28 – 1:45** | **Supervisory Review Queue & Examiner Decision**<br>User navigates to the Review Queue, marks an alert sample as `Confirmed Gap`, enters comments, and saves. | *"The Review Queue allocates prioritized samples alongside an exploration quota. When an examiner records a decision, it is instantly written into an immutable, SHA-256 sequential hash-chained audit ledger with verified cryptographic integrity."* |
+| **1:45 – 2:00** | **Validation Lab & Closing Summary**<br>User navigates to the Validation Lab showing 3.42× Lift over random sampling and zero-dependency offline guarantee. | *"In our Validation Lab, our anti-circular latent maturity model demonstrates a 3.42× lift in defect detection over random manual review. SAT-SA: Scaling supervisory assurance, preserving expert judgment, 100% offline."* |

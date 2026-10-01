@@ -1,0 +1,28 @@
+{
+  "name": "satsa-backend",
+  "version": "1.0.0",
+  "description": "SAT-SA: Supervisory Analytics Tool for SOC Assessment - Backend API",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "knex": "^3.3.0",
+    "multer": "^2.4.0",
+    "pg": "^8.23.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "simple-statistics": "^7.12.1",
+    "zod": "^4.6.5"
+  }
+}
