@@ -322,19 +322,20 @@ async function runIngestCmd(args) {
     return;
   }
 
-  console.log(`\n${c.cyan}[INGEST] Reading submission file: ${filePath}${c.reset}`);
-  const raw = fs.readFileSync(filePath, 'utf-8');
-
+  console.log(`\n${c.cyan}[INGEST] Multi-format Universal Normalizer reading: ${filePath}${c.reset}`);
+  
   let parsed;
   try {
-    parsed = JSON.parse(raw);
+    const { parseMultiFormatFile } = await import('../src/modules/ingestion/universal_parser.js');
+    parsed = await parseMultiFormatFile(filePath, args.find((a, i) => args[i-1] === '--entity') || 'CSE-INGEST-01');
+    console.log(`[INGEST] Detected format: ${c.green}${c.bold}${parsed.format}${c.reset} │ Normalized alerts: ${c.bold}${parsed.alerts.length}${c.reset}`);
   } catch (err) {
-    console.log(`${c.red}[ERROR] Failed to parse JSON: ${err.message}${c.reset}`);
+    console.log(`${c.red}[ERROR] Ingestion failed: ${err.message}${c.reset}`);
     return;
   }
 
-  const entityCode = parsed.entity_code || parsed.entity?.code || 'CSE-INGEST-01';
-  console.log(`[INGEST] Entity Code: ${c.bold}${entityCode}${c.reset}`);
+  const entityCode = parsed.entityCode || 'CSE-INGEST-01';
+  console.log(`[INGEST] Target Entity Code: ${c.bold}${entityCode}${c.reset}`);
 
   // Create or verify entity in database
   let entity = await db('entities').where('code', entityCode).first();

@@ -195,7 +195,7 @@ export function App() {
       
       {/* ================= 1. APP HEADER / NAV BAR (#0B0F19) ================= */}
       <header className="bg-[#0B0F19] text-white border-b border-white/[0.08] sticky top-0 z-40 px-6 py-3.5 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className={`${currentView === 'landing' ? 'max-w-[76.8rem]' : 'max-w-7xl'} mx-auto flex items-center justify-between`}>
           <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => setCurrentView('landing')}>
             <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
               <Shield className="w-6 h-6 text-[#EF4444]" />
@@ -206,7 +206,6 @@ export function App() {
                   SAT<span className="text-[#EF4444]">-SA</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-normal">Supervisory Analytics Tool for SOC Assessment (Critical Sector Entities)</p>
             </div>
           </div>
 

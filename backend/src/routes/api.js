@@ -437,4 +437,78 @@ apiRouter.get('/audit-log', async (req, res, next) => {
   }
 });
 
+// 15. Universal Multi-Format Telemetry Ingestion Endpoint
+apiRouter.post('/ingest/payload', async (req, res, next) => {
+  try {
+    const { payload, format = 'JSON', entityCode = 'CSE-INGEST-01' } = req.body;
+    if (!payload) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Payload is required' } });
+    }
+
+    const { parseMultiFormatFile } = await import('../modules/ingestion/universal_parser.js');
+    
+    // Save payload to a temp scratch file to run multi-format parser
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const tempFile = path.resolve(process.cwd(), `scratch_ingest_${Date.now()}.${format.toLowerCase()}`);
+    fs.writeFileSync(tempFile, typeof payload === 'string' ? payload : JSON.stringify(payload));
+    
+    const parsed = await parseMultiFormatFile(tempFile, entityCode);
+    try { fs.unlinkSync(tempFile); } catch (e) {}
+
+    // Verify / create entity
+    let entity = await db('entities').where('code', parsed.entityCode).first();
+    if (!entity) {
+      const entityId = `ent_${parsed.entityCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      await db('entities').insert({
+        id: entityId,
+        code: parsed.entityCode,
+        name: parsed.entityName,
+        sector_id: parsed.sectorId || 'sec_energy',
+        size_tier: 'TIER_1',
+        active: true
+      });
+      entity = await db('entities').where('id', entityId).first();
+    }
+
+    // Ingest normalized alerts
+    let insertedAlerts = 0;
+    for (const al of parsed.alerts) {
+      const alId = `alt_${entity.id}_${al.external_id}`;
+      const existing = await db('alerts').where('id', alId).first();
+      if (!existing) {
+        await db('alerts').insert({
+          id: alId,
+          entity_id: entity.id,
+          external_id: al.external_id,
+          asset_id: al.asset_id,
+          category: al.category,
+          severity: al.severity,
+          created_at: new Date(al.created_at),
+          closed_at: al.closed_at ? new Date(al.closed_at) : null,
+          disposition: al.disposition,
+          assignee_hash: crypto.createHash('sha256').update(al.assignee || 'anon').digest('hex').slice(0, 16)
+        });
+        insertedAlerts++;
+      }
+    }
+
+    // Trigger fresh analytics run
+    await runSupervisoryAnalysis('multi_format_ingest');
+
+    res.json({
+      data: {
+        status: 'SUCCESS',
+        detectedFormat: parsed.format,
+        entityCode: parsed.entityCode,
+        totalAlertsParsed: parsed.alerts.length,
+        newAlertsInserted: insertedAlerts,
+        assetsDiscovered: parsed.assets.length
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default apiRouter;

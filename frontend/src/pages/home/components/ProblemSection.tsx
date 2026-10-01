@@ -1,152 +1,263 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Copy, Check, Eye } from 'lucide-react';
+import React from 'react';
+import { AlertTriangle } from 'lucide-react';
+
+interface CodeLine {
+  num: string;
+  indent?: number;
+  key?: string;
+  value?: React.ReactNode;
+  isClose?: boolean;
+}
 
 interface ProblemCardData {
   id: string;
-  category: string;
-  dialect: string;
+  filename: string;
   friction: string;
-  rawText: string;
-  highlightedJsx: React.ReactNode;
+  lines: CodeLine[];
 }
 
 const PROBLEM_CARDS: ProblemCardData[] = [
   {
-    id: 'rubber_stamp',
-    category: 'Execution Gap: Rubber-Stamping',
-    dialect: 'Alert & Case Metadata',
-    friction: 'Headline 98% SLA Compliance hides zero triage',
-    rawText: '{"alert_id":"ALT-POWER-1042","severity":"CRITICAL","created":"02:14:10Z","acknowledged":"02:14:35Z","closed":"02:17:20Z","steps_count":0,"disposition":"false_positive","reason":"Auto-closed per queue"}',
-    highlightedJsx: (
-      <span>
-        &#123;"alert_id": "ALT-POWER-1042", "severity": <span className="tok-act-deny">"CRITICAL"</span>, "created": "02:14:10Z", "acknowledged": "02:14:35Z", "closed": <span className="tok-ip">"02:17:20Z (3m 10s)"</span>, "steps_count": <span className="tok-act-drop">0</span>, "disposition": "false_positive"&#125;
-      </span>
-    )
+    id: 'alert_triage',
+    filename: 'alert_triage.json',
+    friction: 'Headline 98% SLA hides 3-minute zero-step triage',
+    lines: [
+      { num: '01', isClose: true, value: '{' },
+      { num: '02', indent: 1, key: '"alert_id"', value: <span style={{ color: '#059669' }}>"ALT-POWER-1042",</span> },
+      { num: '03', indent: 1, key: '"severity"', value: <span style={{ color: '#DC2626', fontWeight: 600 }}>"CRITICAL",</span> },
+      { num: '04', indent: 1, key: '"category"', value: <span style={{ color: '#059669' }}>"SCADA Modbus Injection",</span> },
+      { num: '05', indent: 1, key: '"created_at"', value: <span style={{ color: '#059669' }}>"2024-10-01T02:14:10Z",</span> },
+      { num: '06', indent: 1, key: '"closed_at"', value: <span style={{ color: '#D97706', fontWeight: 600 }}>"2024-10-01T02:17:20Z",</span> },
+      { num: '07', indent: 1, key: '"steps_count"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>0,</span> },
+      { num: '08', indent: 1, key: '"disposition"', value: <span style={{ color: '#059669' }}>"false_positive",</span> },
+      { num: '09', indent: 1, key: '"closure_reason"', value: <span style={{ color: '#059669' }}>"routine_maintenance"</span> },
+      { num: '10', isClose: true, value: '}' }
+    ]
   },
   {
-    id: 'silent_scada',
-    category: 'Negative Space: Silent SCADA Blindspot',
-    dialect: 'Asset Telemetry Registry',
-    friction: 'Zero alerts does not equal zero threats',
-    rawText: '{"asset_id":"AST-POWER-01","type":"SCADA_CONTROLLER","criticality":5,"last_seen":"2026-08-20T10:00:00Z","days_silent":42,"active_alerts":0,"status":"UNMONITORED_BLACKOUT"}',
-    highlightedJsx: (
-      <span>
-        &#123;"asset_id": "AST-POWER-01", "type": <span className="tok-proto">"SCADA_CONTROLLER"</span>, "criticality": <span className="tok-act-deny">5 (MAX)</span>, "days_silent": <span className="tok-act-drop">42 Days</span>, "active_alerts": 0, "status": <span className="tok-act-drop">"UNMONITORED_BLACKOUT"</span>&#125;
-      </span>
-    )
-  },
-  {
-    id: 'unescalated',
-    category: 'Execution Gap: Unescalated Critical',
-    dialect: 'Incident Escalation Records',
-    friction: 'Severe incident resolved locally without CIRT',
-    rawText: '{"case_id":"CAS-HEALTH-2018","alert":"Ransomware Activity","severity":"CRITICAL","escalation_level":"NONE","assignee":"L1_Trainee","root_cause_recorded":false}',
-    highlightedJsx: (
-      <span>
-        &#123;"case_id": "CAS-HEALTH-2018", "alert": <span className="tok-act-deny">"Ransomware Activity"</span>, "severity": <span className="tok-act-deny">"CRITICAL"</span>, "escalation_level": <span className="tok-act-drop">"NONE (L1 only)"</span>, "root_cause": <span className="tok-act-drop">false</span>&#125;
-      </span>
-    )
+    id: 'telemetry_health',
+    filename: 'telemetry_health.json',
+    friction: 'Tier-1 critical SCADA asset unmonitored for 42 days',
+    lines: [
+      { num: '01', isClose: true, value: '{' },
+      { num: '02', indent: 1, key: '"asset_id"', value: <span style={{ color: '#059669' }}>"AST-POWER-01",</span> },
+      { num: '03', indent: 1, key: '"asset_type"', value: <span style={{ color: '#059669' }}>"SCADA_CONTROLLER",</span> },
+      { num: '04', indent: 1, key: '"criticality_tier"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>1,</span> },
+      { num: '05', indent: 1, key: '"last_telemetry_received"', value: <span style={{ color: '#059669' }}>"2024-08-20T00:00:00Z",</span> },
+      { num: '06', indent: 1, key: '"endpoint"', value: <span>{'{'}</span> },
+      { num: '07', indent: 2, key: '"ip"', value: <span style={{ color: '#059669' }}>"10.45.2.110",</span> },
+      { num: '08', indent: 2, key: '"port"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>502</span> },
+      { num: '09', indent: 1, isClose: true, value: '}' },
+      { num: '10', isClose: true, value: '}' }
+    ]
   }
 ];
 
 export const ProblemSection: React.FC = () => {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showTokens, setShowTokens] = useState<boolean>(false);
-
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1800);
-  };
-
   return (
-    <section id="problem" className="landing-section bg-subtle">
+    <section id="problem" className="landing-section" style={{ backgroundColor: '#991B1B', color: '#FFFFFF', borderBottom: '1px solid #7F1D1D' }}>
       <div className="landing-content-wrap">
         
-        {/* Header with Switch */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '3rem' }}>
-          <div style={{ maxWidth: '44rem' }}>
-            <h2 className="landing-h2" style={{ marginBottom: '1rem' }}>
-              The real-world problem
-            </h2>
-            <p className="landing-lead" style={{ marginBottom: 0 }}>
-              National supervisory assessments face hundreds of thousands of alert records. Conventional dashboards rely on{' '}
-              <span 
-                style={{ 
-                  backgroundColor: '#991B1B', 
-                  color: '#FFFFFF',
-                  padding: '2px 8px', 
-                  borderRadius: '0.25rem', 
-                  textDecoration: 'underline', 
-                  textUnderlineOffset: '4px', 
-                  textDecorationColor: '#FFFFFF', 
-                  textDecorationThickness: '2px', 
-                  fontWeight: 600,
-                  display: 'inline-block'
-                }}
-              >
-                reported metrics that mislead
-              </span>
-              . An entity reporting 98% SLA compliance may in reality be rubber-stamping critical alerts in 2 minutes without investigation.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowTokens(!showTokens)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              backgroundColor: showTokens ? '#0F172A' : '#FFFFFF',
-              color: showTokens ? '#FFFFFF' : '#0F172A',
-              border: '1px solid #CBD5E1',
-              borderRadius: '9999px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}
-          >
-            <Eye size={14} />
-            {showTokens ? 'Hide Forensic Highlights' : 'Highlight Forensic Weaknesses'}
-          </button>
+        {/* Header */}
+        <div style={{ maxWidth: '46rem', marginBottom: '2.5rem' }}>
+          <h2 className="landing-h2" style={{ color: '#FFFFFF', marginBottom: '1rem' }}>
+            The real-world problem
+          </h2>
+          <p className="landing-lead" style={{ color: '#FFFFFF', marginBottom: 0 }}>
+            National supervisory assessments face{' '}
+            <span 
+              style={{ 
+                backgroundColor: '#0F172A', 
+                color: '#FFFFFF',
+                padding: '2px 6px', 
+                borderRadius: '0.25rem', 
+                border: '1px solid #1E293B',
+                textDecoration: 'underline', 
+                textUnderlineOffset: '4px', 
+                textDecorationColor: '#FFFFFF', 
+                textDecorationThickness: '2px', 
+                fontWeight: 600,
+                display: 'inline',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone'
+              }}
+            >
+              hundreds of thousands of alert records
+            </span>
+            . Conventional dashboards rely on{' '}
+            <span 
+              style={{ 
+                backgroundColor: '#FFFFFF', 
+                color: '#991B1B',
+                padding: '2px 6px', 
+                borderRadius: '0.25rem', 
+                border: '1px solid #F87171',
+                textDecoration: 'underline', 
+                textUnderlineOffset: '4px', 
+                textDecorationColor: '#991B1B', 
+                textDecorationThickness: '2px', 
+                fontWeight: 700,
+                display: 'inline',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone'
+              }}
+            >
+              reported metrics that mislead
+            </span>
+            . An entity reporting{' '}
+            <span 
+              style={{ 
+                backgroundColor: '#0F172A', 
+                color: '#FFFFFF',
+                padding: '2px 6px', 
+                borderRadius: '0.25rem', 
+                border: '1px solid #1E293B',
+                textDecoration: 'underline', 
+                textUnderlineOffset: '4px', 
+                textDecorationColor: '#FFFFFF', 
+                textDecorationThickness: '2px', 
+                fontWeight: 600,
+                display: 'inline',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone'
+              }}
+            >
+              98% SLA compliance
+            </span>{' '}
+            may in reality be{' '}
+            <span 
+              style={{ 
+                backgroundColor: '#0F172A', 
+                color: '#FFFFFF',
+                padding: '2px 6px', 
+                borderRadius: '0.25rem', 
+                border: '1px solid #1E293B',
+                textDecoration: 'underline', 
+                textUnderlineOffset: '4px', 
+                textDecorationColor: '#FFFFFF', 
+                textDecorationThickness: '2px', 
+                fontWeight: 600,
+                display: 'inline',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone'
+              }}
+            >
+              rubber-stamping critical alerts in 3 minutes
+            </span>{' '}
+            without investigation.
+          </p>
         </div>
 
-        {/* 3 Interactive Problem Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1.5rem' }}>
+        {/* 2 Mac-Style Code Window Cards Matching the Reference Design */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.75rem' }}>
           {PROBLEM_CARDS.map((card) => (
-            <div key={card.id} className="problem-card">
-              <div className="problem-card-header">
-                <span className="problem-vendor-tag">
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#991B1B' }}></span>
-                  {card.category}
-                </span>
-                <span className="problem-dialect-badge">
-                  {card.dialect}
-                </span>
-              </div>
-
-              <div className="problem-code-block">
-                <code>
-                  {showTokens ? card.highlightedJsx : card.rawText}
-                </code>
-              </div>
-
-              <div className="problem-card-footer">
-                <div className="problem-friction-pill">
-                  <AlertTriangle size={13} color="#DC2626" />
-                  <span>{card.friction}</span>
+            <div 
+              key={card.id} 
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              {/* Window Header with 3 colored dots & filename */}
+              <div 
+                style={{
+                  padding: '1rem 1.25rem 0.75rem 1.25rem',
+                  background: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem'
+                }}
+              >
+                {/* 3 Mac Dots */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#EF4444' }}></span>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
                 </div>
-
-                <button
-                  onClick={() => handleCopy(card.id, card.rawText)}
-                  className="problem-copy-btn"
-                  title="Copy sample metadata"
+                {/* Filename */}
+                <span 
+                  style={{ 
+                    fontSize: '0.875rem', 
+                    fontWeight: 600, 
+                    color: '#0F172A', 
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    marginLeft: '4px'
+                  }}
                 >
-                  {copiedId === card.id ? <Check size={14} color="#991B1B" /> : <Copy size={14} color="#64748B" />}
-                </button>
+                  {card.filename}
+                </span>
+              </div>
+
+              {/* Code Container with exact reference typography */}
+              <div 
+                style={{
+                  padding: '0.5rem 1.5rem 1.5rem 1.5rem',
+                  background: '#FFFFFF',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.8',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                {card.lines.map((line, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center' }}>
+                    {/* Line Number */}
+                    <span 
+                      style={{ 
+                        width: '36px', 
+                        color: '#94A3B8', 
+                        fontSize: '0.8rem', 
+                        userSelect: 'none',
+                        flexShrink: 0,
+                        fontWeight: 400
+                      }}
+                    >
+                      {line.num}
+                    </span>
+                    {/* Code Content */}
+                    <div 
+                      style={{ 
+                        flex: 1, 
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis',
+                        color: '#0F172A',
+                        paddingLeft: line.indent ? `${line.indent * 1.25}rem` : '0'
+                      }}
+                    >
+                      {line.key && (
+                        <span style={{ color: '#0284C7', fontWeight: 600, marginRight: '6px' }}>
+                          {line.key}:
+                        </span>
+                      )}
+                      {line.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Card Footer with Highlight Flag */}
+              <div 
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#FEF2F2',
+                  borderTop: '1px solid #FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#991B1B' }}>
+                  {card.friction}
+                </span>
               </div>
             </div>
           ))}
@@ -156,3 +267,5 @@ export const ProblemSection: React.FC = () => {
     </section>
   );
 };
+
+export default ProblemSection;

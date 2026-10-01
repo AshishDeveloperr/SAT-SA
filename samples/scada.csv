@@ -1,0 +1,3 @@
+Timestamp,Severity,Host,Category,Resolution,Notes
+2026-10-01 08:15:00,CRITICAL,RTU-SUBSTATION-01,SCADA Command Injection,RESOLVED,Investigated and mitigated
+2026-10-01 08:30:00,HIGH,RTU-SUBSTATION-02,Modbus Telemetry Spike,RESOLVED,False positive filter applied

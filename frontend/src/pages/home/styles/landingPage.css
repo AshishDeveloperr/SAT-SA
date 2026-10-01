@@ -44,13 +44,13 @@
 }
 
 .landing-content-wrap {
-  max-width: 64rem; /* 5xl */
+  max-width: 76.8rem; /* Increased by 20% from 64rem (5xl) to ~77rem */
   margin-left: auto;
   margin-right: auto;
 }
 
 .landing-content-wide {
-  max-width: 80rem; /* 7xl */
+  max-width: 96rem; /* Increased by 20% from 80rem to 96rem */
   margin-left: auto;
   margin-right: auto;
 }
