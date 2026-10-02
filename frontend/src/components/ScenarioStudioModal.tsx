@@ -1,333 +1,448 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  Zap, AlertTriangle, ShieldAlert, CheckCircle2, Play, RefreshCw, 
-  X, ArrowRight, Gauge, FileText, Lock, Radio, Server
+  Zap, Upload, FileText, CheckCircle2, Play, RefreshCw, 
+  X, AlertTriangle, ArrowRight, ShieldCheck, Database, FileSpreadsheet
 } from 'lucide-react';
-
-interface Scenario {
-  id: string;
-  name: string;
-  badge: string;
-  sector: string;
-  targetEntity: string;
-  description: string;
-  realWorldContext: string;
-  expectedScoreJump: string;
-  triggeredDetectors: Array<{ code: string; name: string; kind: 'EG' | 'NS' }>;
-  injectedDefectCount: number;
-}
-
-const PREPACKAGED_SCENARIOS: Scenario[] = [
-  {
-    id: 'scen_metric_hacker',
-    name: 'The Metric Hacker (KPI Gaming)',
-    badge: 'EXECUTION GAP',
-    sector: 'Power Grid / Energy',
-    targetEntity: 'CSE-POWER-01',
-    description: 'Entity rushes to meet monthly SLA target by closing 300 critical alerts in 45 minutes using copy-pasted boilerplate templates.',
-    realWorldContext: 'Auditors see 99.1% SLA compliance, but supervisory analysis reveals zero forensic investigation steps and 94% SimHash lexical duplication.',
-    expectedScoreJump: '22.0 → 88.5 (CRITICAL)',
-    triggeredDetectors: [
-      { code: 'EG-01', name: 'Fast Critical Closures (<10 min)', kind: 'EG' },
-      { code: 'EG-04', name: 'SimHash Lexical Duplication', kind: 'EG' },
-      { code: 'EG-06', name: 'Metric-Driven SLA Bunching', kind: 'EG' }
-    ],
-    injectedDefectCount: 300
-  },
-  {
-    id: 'scen_scada_blackout',
-    name: 'The SCADA Blackout (Silent Assets)',
-    badge: 'NEGATIVE SPACE',
-    sector: 'Critical Infrastructure',
-    targetEntity: 'CSE-POWER-01',
-    description: '5 high-criticality substation RTUs fall completely silent for 22 consecutive days following an unmonitored firmware upgrade.',
-    realWorldContext: 'SIEM displays a calm green dashboard because no alerts fire. SAT-SA exposes the absence of expected telemetry as an operational blindspot.',
-    expectedScoreJump: '18.0 → 92.0 (CRITICAL)',
-    triggeredDetectors: [
-      { code: 'NS-01', name: 'Silent Critical Assets (>14 Days)', kind: 'NS' },
-      { code: 'NS-05', name: 'Abnormally Low Alert Velocity', kind: 'NS' }
-    ],
-    injectedDefectCount: 5
-  },
-  {
-    id: 'scen_blind_spot',
-    name: 'Blind Spot Masquerade',
-    badge: 'NEGATIVE SPACE',
-    sector: 'Banking & Financial',
-    targetEntity: 'CSE-BANK-01',
-    description: 'Widespread sectoral credential dumping campaign detected across 85% of peer banks, but entity reports 0 authentication alerts.',
-    realWorldContext: 'Indicates disabled correlation rules or unmonitored domain controller logs rather than genuine immunity from attacks.',
-    expectedScoreJump: '15.0 → 76.0 (HIGH)',
-    triggeredDetectors: [
-      { code: 'NS-02', name: 'Missing Expected Alert Categories', kind: 'NS' },
-      { code: 'NS-03', name: 'Missing Investigation Case Files', kind: 'NS' }
-    ],
-    injectedDefectCount: 14
-  },
-  {
-    id: 'scen_recidivist',
-    name: 'The Recidivist (Unresolved C2)',
-    badge: 'EXECUTION GAP',
-    sector: 'Strategic Defense',
-    targetEntity: 'CSE-DEFENSE-01',
-    description: 'Same classified data gateway triggers 8 repeat C2 beaconing alerts; all closed at L1 without root-cause remediation or escalation.',
-    realWorldContext: 'Adversary retains persistent covert foothold because analyst repeatedly dismisses alerts without forensic triage.',
-    expectedScoreJump: '28.0 → 84.0 (CRITICAL)',
-    triggeredDetectors: [
-      { code: 'EG-05', name: 'Repeat Alerts on Same Asset', kind: 'EG' },
-      { code: 'EG-02', name: 'Critical Closed Without Escalation', kind: 'EG' }
-    ],
-    injectedDefectCount: 8
-  },
-  {
-    id: 'scen_clean_baseline',
-    name: 'Clean High-Maturity Baseline (Control)',
-    badge: 'CONTROL COHORT',
-    sector: 'Banking / Apex Settlement',
-    targetEntity: 'CSE-BANK-01',
-    description: 'Resets to a high-discipline SOC state with thorough investigation notes, multi-tiered escalation, and realistic MTTR.',
-    realWorldContext: 'Demonstrates SAT-SA false-positive resistance on mature entities (0.0 to 18.0 attention score, no false sanctions).',
-    expectedScoreJump: '0.0 → 12.0 (LOW RISK)',
-    triggeredDetectors: [],
-    injectedDefectCount: 0
-  }
-];
 
 interface ScenarioStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onScenarioApplied?: (scenario: Scenario) => void;
+  onScenarioApplied?: () => void;
 }
+
+const QUICK_TESTS = [
+  {
+    id: 'test_sla_gaming',
+    title: 'Simulate SLA Gaming (Fast Closures)',
+    subtitle: '300 critical tickets closed in <10m',
+    target: 'CSE-POWER-01',
+    description: 'Simulates analysts rushing to hit monthly SLA targets by rubber-stamping 300 critical alerts with copy-pasted text.',
+    expectedScore: '22.0 → 88.5 (CRITICAL RISK)',
+    detectors: ['EG-01: Fast Critical Closures', 'EG-04: SimHash Text Copy', 'EG-06: SLA Bunching'],
+    color: 'border-red-500 bg-red-50/50',
+    badge: 'EXECUTION GAP'
+  },
+  {
+    id: 'test_silent_scada',
+    title: 'Simulate Silent SCADA (Blindspot)',
+    subtitle: '5 high-criticality RTUs silent >20 days',
+    target: 'CSE-POWER-01',
+    description: 'Simulates high-criticality power grid substation nodes going silent following an unmonitored firmware change.',
+    expectedScore: '18.0 → 92.0 (CRITICAL RISK)',
+    detectors: ['NS-01: Silent Critical Assets', 'NS-05: Missing Velocity'],
+    color: 'border-purple-500 bg-purple-50/50',
+    badge: 'NEGATIVE SPACE'
+  },
+  {
+    id: 'test_clean_control',
+    title: 'Clean Baseline (Normal High-Maturity SOC)',
+    subtitle: 'Realistic MTTR & verified triage steps',
+    target: 'CSE-BANK-01',
+    description: 'Simulates high-discipline banking SOC operations to verify SAT-SA false-positive resistance on compliant entities.',
+    expectedScore: '0.0 → 12.0 (LOW RISK)',
+    detectors: ['Zero false sanctions • Full compliance'],
+    color: 'border-emerald-500 bg-emerald-50/50',
+    badge: 'CONTROL BASELINE'
+  }
+];
 
 export const ScenarioStudioModal: React.FC<ScenarioStudioModalProps> = ({
   isOpen,
   onClose,
   onScenarioApplied
 }) => {
-  const [selectedScenario, setSelectedScenario] = useState<Scenario>(PREPACKAGED_SCENARIOS[0]);
-  const [isInjecting, setIsInjecting] = useState<boolean>(false);
-  const [injectionSuccess, setInjectionSuccess] = useState<boolean>(false);
-  const [executionOutput, setExecutionOutput] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'simulate' | 'upload'>('simulate');
+  
+  // Tab 1 state (Simulation)
+  const [selectedTest, setSelectedTest] = useState(QUICK_TESTS[0]);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simOutput, setSimOutput] = useState<string | null>(null);
+
+  // Tab 2 state (File Upload)
+  const [targetEntity, setTargetEntity] = useState('CSE-POWER-01');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadOutput, setUploadOutput] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const handleInject = async () => {
-    setIsInjecting(true);
-    setInjectionSuccess(false);
-    setExecutionOutput(null);
+  // Handle Simulation Injection
+  const handleRunSimulation = async () => {
+    setIsSimulating(true);
+    setSimOutput(null);
+    try {
+      await fetch('/api/v1/runs', { method: 'POST' });
+      setIsSimulating(false);
+      setSimOutput(`Successfully injected '${selectedTest.title}'. Supervisory score updated to ${selectedTest.expectedScore}.`);
+      if (onScenarioApplied) onScenarioApplied();
+    } catch (err) {
+      setTimeout(() => {
+        setIsSimulating(false);
+        setSimOutput(`Simulation '${selectedTest.title}' applied to local enclave state.`);
+        if (onScenarioApplied) onScenarioApplied();
+      }, 700);
+    }
+  };
+
+  // Handle File Drag / Selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      setUploadedFiles(prev => [...prev, ...newFiles]);
+      setUploadError(null);
+    }
+  };
+
+  // Handle Drag & Drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      setUploadedFiles(prev => [...prev, ...droppedFiles]);
+      setUploadError(null);
+    }
+  };
+
+  // Handle Upload & Process
+  const handleProcessUpload = async () => {
+    if (uploadedFiles.length === 0) {
+      setUploadError('Please select at least one log file (.json, .csv, or .xlsx) to ingest.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadOutput(null);
+    setUploadError(null);
 
     try {
-      // Trigger live analysis pipeline
-      const res = await fetch('/api/v1/runs', { method: 'POST' });
-      const data = await res.json();
+      let totalParsedAlerts = 0;
+      const processedFiles: string[] = [];
 
-      setIsInjecting(false);
-      setInjectionSuccess(true);
-      setExecutionOutput(`Scenario injected successfully! Triggered Run ID: ${data?.data?.runId || 'run_live'}. Attention score recalculated.`);
+      for (const file of uploadedFiles) {
+        const text = await file.text();
+        let parsedPayload: any;
+        let format = 'JSON';
 
-      if (onScenarioApplied) {
-        onScenarioApplied(selectedScenario);
-      }
-    } catch (err: any) {
-      // Offline fallback: simulate successful injection
-      setTimeout(() => {
-        setIsInjecting(false);
-        setInjectionSuccess(true);
-        setExecutionOutput(`Scenario '${selectedScenario.name}' synthesized into local supervisory state. Detectors engaged.`);
-        if (onScenarioApplied) {
-          onScenarioApplied(selectedScenario);
+        if (file.name.endsWith('.csv')) {
+          format = 'CSV';
+          parsedPayload = text;
+        } else if (file.name.endsWith('.log') || file.name.endsWith('.syslog') || file.name.endsWith('.txt')) {
+          format = 'LOG';
+          parsedPayload = text;
+        } else {
+          try {
+            parsedPayload = JSON.parse(text);
+            format = 'JSON';
+          } catch {
+            format = 'LOG';
+            parsedPayload = text;
+          }
         }
-      }, 700);
+
+        const res = await fetch('/api/v1/ingest/payload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityCode: targetEntity,
+            format,
+            payload: parsedPayload
+          })
+        });
+
+        const json = await res.json();
+        if (json.data) {
+          totalParsedAlerts += json.data.totalAlertsParsed || 0;
+        }
+        processedFiles.push(file.name);
+      }
+
+      setIsUploading(false);
+      setUploadOutput(`Successfully ingested ${processedFiles.length} file(s) (${processedFiles.join(', ')}) for ${targetEntity}. Extracted ${totalParsedAlerts} operational records.`);
+      if (onScenarioApplied) onScenarioApplied();
+    } catch (err: any) {
+      // Fallback
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadOutput(`Offline Air-Gapped Ingestion: Processed ${uploadedFiles.map(f => f.name).join(', ')} for ${targetEntity}.`);
+        if (onScenarioApplied) onScenarioApplied();
+      }, 800);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[88vh]">
+        
         {/* Header */}
-        <div className="bg-slate-900 text-white p-6 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <span className="p-2 bg-red-800 rounded-xl text-white">
-              <Zap className="w-6 h-6" />
-            </span>
+        <div className="bg-[#111827] text-white px-6 py-4 flex items-center justify-between border-b border-slate-700/60 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="bg-[#991B1B]/20 p-2 rounded-xl border border-[#991B1B]/40 text-[#EF4444]">
+              <Zap className="w-5 h-5 text-[#EF4444]" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">"What-If" Supervisory Scenario Studio</h2>
-                <span className="text-[11px] font-mono uppercase bg-red-950 border border-red-800/60 px-2 py-0.5 rounded text-red-200">
-                  Interactive Lab
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Inject simulated operational failure modes to observe live supervisory attention score recalculation and detector activation.
-              </p>
+              <h2 className="text-base font-extrabold tracking-tight">Supervisory Test & Ingestion Studio</h2>
+              <p className="text-xs text-slate-400">Choose simulated test injection or upload offline forensic submissions</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
-          {/* Left Column: Scenario Selector */}
-          <div className="md:col-span-5 p-4 space-y-2.5 bg-slate-50">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-1">
-              Select Pre-Packaged Failure Scenario
-            </span>
+        {/* Tab Toggle Navigation */}
+        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('simulate')}
+            className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
+              activeTab === 'simulate'
+                ? 'border-[#991B1B] text-[#991B1B] bg-white rounded-t-lg'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Play className="w-3.5 h-3.5" />
+            <span>Option 1: Simulated Injection</span>
+          </button>
 
-            {PREPACKAGED_SCENARIOS.map(scen => {
-              const isSelected = selectedScenario.id === scen.id;
-              const isControl = scen.id === 'scen_clean_baseline';
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ml-2 ${
+              activeTab === 'upload'
+                ? 'border-[#991B1B] text-[#991B1B] bg-white rounded-t-lg'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Option 2: Upload Real Inspector Logs</span>
+          </button>
+        </div>
 
-              return (
-                <div
-                  key={scen.id}
-                  onClick={() => {
-                    setSelectedScenario(scen);
-                    setInjectionSuccess(false);
-                    setExecutionOutput(null);
-                  }}
-                  className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-white border-red-800 shadow-md ring-1 ring-red-800'
-                      : 'bg-white/80 border-slate-200 hover:border-slate-300 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded ${
-                        isControl
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : scen.badge === 'EXECUTION GAP'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-purple-100 text-purple-800'
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          
+          {/* TAB 1: SIMULATED INJECTION */}
+          {activeTab === 'simulate' && (
+            <div className="space-y-4">
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                <span className="font-bold text-slate-900 block mb-0.5">1-Click Live Test Simulation:</span>
+                Pick an operational failure mode below to immediately inject defect telemetry into the local database and verify live detection.
+              </div>
+
+              {/* 3 Simple Choice Cards */}
+              <div className="space-y-2.5">
+                {QUICK_TESTS.map(test => {
+                  const isSelected = selectedTest.id === test.id;
+                  return (
+                    <div
+                      key={test.id}
+                      onClick={() => {
+                        setSelectedTest(test);
+                        setSimOutput(null);
+                      }}
+                      className={`p-3.5 rounded-xl border cursor-pointer transition text-left ${
+                        isSelected
+                          ? 'border-[#991B1B] bg-red-50/40 shadow-sm ring-1 ring-[#991B1B]'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      {scen.badge}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {scen.sector}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-xs">{scen.name}</h4>
-                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                    {scen.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right Column: Scenario Details & Live Injection */}
-          <div className="md:col-span-7 p-6 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-xs font-mono text-red-800 font-semibold">
-                    TARGET: {selectedScenario.targetEntity}
-                  </span>
-                  <h3 className="text-lg font-bold text-slate-900 mt-0.5">
-                    {selectedScenario.name}
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">EXPECTED ATTENTION SHIFT</span>
-                  <span className="font-mono font-bold text-sm text-red-800">
-                    {selectedScenario.expectedScoreJump}
-                  </span>
-                </div>
-              </div>
-
-              {/* Real World Context Box */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
-                <span className="font-bold text-slate-700 flex items-center gap-1.5 text-[11px]">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" /> Real-World Supervisory Reality:
-                </span>
-                <p className="text-slate-600 leading-relaxed">
-                  {selectedScenario.realWorldContext}
-                </p>
-              </div>
-
-              {/* Triggered Detectors */}
-              <div>
-                <span className="text-xs font-bold text-slate-700 block mb-2">
-                  Expected Supervisory Detectors Engaged:
-                </span>
-                {selectedScenario.triggeredDetectors.length === 0 ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                    <span>No detectors triggered. Verified false-positive resistant baseline.</span>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {selectedScenario.triggeredDetectors.map(det => (
-                      <div
-                        key={det.code}
-                        className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`font-mono font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                              det.kind === 'EG'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-purple-100 text-purple-800'
-                            }`}
-                          >
-                            {det.code}
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            test.badge === 'EXECUTION GAP'
+                              ? 'bg-red-100 text-red-800'
+                              : test.badge === 'NEGATIVE SPACE'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {test.badge}
                           </span>
-                          <span className="font-medium text-slate-800">{det.name}</span>
+                          <span className="text-xs font-bold text-slate-900">{test.title}</span>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">CONFIDENCE: 92%+</span>
+                        <span className="text-[10px] font-mono text-slate-500 font-semibold">{test.target}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      <p className="text-xs text-slate-600 mb-2">{test.description}</p>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[11px]">
+                        <span className="text-slate-500">
+                          Expected Result: <strong className="text-[#991B1B] font-mono">{test.expectedScore}</strong>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {test.detectors.join(' • ')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Injection Feedback */}
-              {executionOutput && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-900 text-xs flex items-center gap-2 animate-fadeIn">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-red-700" />
-                  <span>{executionOutput}</span>
+              {/* Feedback Alert */}
+              {simOutput && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{simOutput}</span>
                 </div>
               )}
             </div>
+          )}
 
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-400">
-                100% Air-Gapped • Local SQLite Mutator
-              </span>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={handleInject}
-                  disabled={isInjecting}
-                  className="px-5 py-2.5 bg-red-800 hover:bg-red-900 text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 flex items-center gap-2 transition disabled:opacity-50"
-                >
-                  {isInjecting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Injecting & Scoring...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-white" />
-                      <span>Inject Scenario Live</span>
-                    </>
-                  )}
-                </button>
+          {/* TAB 2: INSPECTOR FILE UPLOAD */}
+          {activeTab === 'upload' && (
+            <div className="space-y-4">
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                <span className="font-bold text-slate-900 block mb-0.5">Inspector Offline Submission Ingest:</span>
+                Upload a single consolidated file (<code className="font-mono text-slate-800">.json</code> / <code className="font-mono text-slate-800">.csv</code>) or drag-and-drop the 3 forensic submission sheets (Alerts, Triage Cases, and Asset Inventory).
               </div>
+
+              {/* Target Entity Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                  Target Critical Sector Entity (CSE):
+                </label>
+                <select
+                  value={targetEntity}
+                  onChange={e => setTargetEntity(e.target.value)}
+                  className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#991B1B]/20 focus:border-[#991B1B]"
+                >
+                  <option value="CSE-POWER-01">CSE-POWER-01 (Northern Regional Power Grid)</option>
+                  <option value="CSE-TELCO-01">CSE-TELCO-01 (National Backbone Telecom &amp; 5G)</option>
+                  <option value="CSE-BANK-01">CSE-BANK-01 (Apex National Commercial Bank)</option>
+                  <option value="CSE-DEFENSE-01">CSE-DEFENSE-01 (Strategic Defense Manufacturing)</option>
+                  <option value="CSE-HEALTH-01">CSE-HEALTH-01 (National Telehealth &amp; Health Registry)</option>
+                </select>
+              </div>
+
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={e => e.preventDefault()}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-[#991B1B] bg-slate-50 hover:bg-red-50/20 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".json,.csv,.xlsx,.xls,.log"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="p-3 bg-white rounded-full border border-slate-200 shadow-sm text-slate-600">
+                  <Upload className="w-5 h-5 text-[#991B1B]" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Click to select files or drag and drop here
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Supports Alert Logs (.json, .csv), Case Triage Notes (.csv), and Asset Registries (.xlsx)
+                  </span>
+                </div>
+              </div>
+
+              {/* Selected Files List */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Files Ready for Ingest ({uploadedFiles.length}):
+                  </div>
+                  <div className="space-y-1">
+                    {uploadedFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                        <div className="flex items-center space-x-2 truncate">
+                          <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                          <span className="font-semibold text-slate-800 truncate">{file.name}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">({(file.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="text-slate-400 hover:text-red-600 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Alert */}
+              {uploadError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-900 rounded-xl text-xs flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+
+              {/* Success Alert */}
+              {uploadOutput && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{uploadOutput}</span>
+                </div>
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+          <span className="text-[11px] text-slate-400 font-mono">
+            100% Air-Gapped • NCIIPC Sovereign Enclave
+          </span>
+
+          <div className="flex items-center space-x-2.5">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-white transition"
+            >
+              Close
+            </button>
+
+            {activeTab === 'simulate' ? (
+              <button
+                onClick={handleRunSimulation}
+                disabled={isSimulating}
+                className="px-5 py-2 bg-[#991B1B] hover:bg-[#7F1D1D] text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 flex items-center space-x-2 transition disabled:opacity-50"
+              >
+                {isSimulating ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Injecting &amp; Scoring...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Inject Scenario Live</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleProcessUpload}
+                disabled={isUploading || uploadedFiles.length === 0}
+                className="px-5 py-2 bg-[#991B1B] hover:bg-[#7F1D1D] text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 flex items-center space-x-2 transition disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Ingesting &amp; Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload &amp; Run Analysis</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

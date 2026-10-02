@@ -93,9 +93,11 @@ export function App() {
   const [isAuditValid, setIsAuditValid] = useState<boolean>(true);
   
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [selectedEntityGap, setSelectedEntityGap] = useState<KpiGap | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isScenarioStudioOpen, setIsScenarioStudioOpen] = useState<boolean>(false);
+
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -215,30 +217,30 @@ export function App() {
       currentView === 'console' ? 'h-screen overflow-hidden' : 'min-h-screen'
     }`}>
       
-      {/* ================= 1. APP HEADER / NAV BAR (#111827) ================= */}
-      <header className="bg-[#111827] text-white border-b border-slate-700/60 sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
-        <div className="w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
-              <Shield className="w-6 h-6 text-[#EF4444]" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-xl tracking-tight text-white font-sans">
-                  SAT<span className="text-[#EF4444]">-SA</span>
-                </span>
+      {/* ================= 1. APP HEADER / NAV BAR (Visible ONLY on Landing Page) ================= */}
+      {currentView === 'landing' ? (
+        <header className="bg-[#111827] text-white border-b border-slate-700/60 sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
+          <div className="w-full mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => navigate('/')}>
+              <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
+                <Shield className="w-6 h-6 text-[#EF4444]" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-extrabold text-xl tracking-tight text-white font-sans">
+                    SAT<span className="text-[#EF4444]">-SA</span>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-3">
-            {statusMessage && (
-              <span className="text-xs bg-[#991B1B]/20 text-[#FCA5A5] border border-[#991B1B]/40 px-3 py-1 rounded-lg font-medium animate-pulse">
-                {statusMessage}
-              </span>
-            )}
+            <div className="flex items-center space-x-3">
+              {statusMessage && (
+                <span className="text-xs bg-[#991B1B]/20 text-[#FCA5A5] border border-[#991B1B]/40 px-3 py-1 rounded-lg font-medium animate-pulse">
+                  {statusMessage}
+                </span>
+              )}
 
-            {currentView === 'landing' ? (
               <div className="flex items-center space-x-2.5">
                 <button 
                   onClick={() => setIsScenarioStudioOpen(true)}
@@ -255,43 +257,10 @@ export function App() {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
-              <>
-                <button 
-                  onClick={() => setIsScenarioStudioOpen(true)}
-                  className="flex items-center space-x-1.5 text-xs bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-700/60 px-3 py-2 rounded-lg font-bold shadow-sm transition hover:scale-105 active:scale-95"
-                >
-                  <Zap className="w-3.5 h-3.5 text-[#EF4444]" />
-                  <span>What-If Studio</span>
-                </button>
-                <button 
-                  onClick={() => navigate('/')}
-                  className="flex items-center space-x-1.5 text-xs bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 px-3 py-2 rounded-lg transition"
-                >
-                  <Home className="w-3.5 h-3.5 text-[#EF4444]" />
-                  <span>Technical Overview</span>
-                </button>
-                <button 
-                  onClick={handleRunAnalysis}
-                  disabled={isLoading}
-                  className="flex items-center space-x-2 text-xs bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(153,27,27,0.35)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span>Run Analytics</span>
-                </button>
-                <button 
-                  onClick={handleRegenerateSynth}
-                  disabled={isLoading}
-                  className="flex items-center space-x-1.5 text-xs bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 px-3 py-2 rounded-lg transition"
-                >
-                  <Database className="w-3.5 h-3.5 text-[#EF4444]" />
-                  <span>Reset Synth Data</span>
-                </button>
-              </>
-            )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : null}
 
       {/* ================= CONDITIONAL VIEW: LANDING PAGE OR CONSOLE WITH LEFT SIDEBAR ================= */}
       {currentView === 'landing' ? (
@@ -300,10 +269,30 @@ export function App() {
           onOpenScenarioStudio={() => setIsScenarioStudioOpen(true)}
         />
       ) : (
-        /* ================= SUPERVISORY OPERATIONAL CONSOLE (WITH FIXED LEFT SIDEBAR) ================= */
+        /* ================= SUPERVISORY OPERATIONAL CONSOLE (WITH FIXED FULL-HEIGHT LEFT SIDEBAR) ================= */
         <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-[#111827]">
           {/* ================= FIXED LEFT SIDEBAR ================= */}
           <aside className="w-60 bg-[#111827] text-white border-r border-slate-700/60 flex flex-col flex-shrink-0 h-full select-none">
+            {/* Sidebar Brand Header */}
+            <div className="px-3.5 py-3.5 border-b border-slate-700/60 flex items-center justify-between flex-shrink-0 bg-[#111827]">
+              <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => navigate('/')}>
+                <div className="bg-[#991B1B]/15 p-1.5 rounded-lg border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_10px_rgba(153,27,27,0.3)]">
+                  <Shield className="w-4 h-4 text-[#EF4444]" />
+                </div>
+                <span className="font-extrabold text-base tracking-tight text-white">
+                  SAT<span className="text-[#EF4444]">-SA</span>
+                </span>
+              </div>
+
+              <button 
+                onClick={() => navigate('/')}
+                title="Return to Technical Overview"
+                className="p-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/70 transition"
+              >
+                <Home className="w-3.5 h-3.5 text-[#EF4444]" />
+              </button>
+            </div>
+
             {/* Menu List */}
             <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
               {sidebarMenuItems.map(tab => {
@@ -347,6 +336,38 @@ export function App() {
                 );
               })}
             </nav>
+
+            {/* Sidebar Action Buttons */}
+            <div className="px-2.5 py-2 border-t border-slate-700/60 bg-black/20 space-y-1.5 flex-shrink-0">
+              <button 
+                onClick={() => setIsScenarioStudioOpen(true)}
+                className="w-full flex items-center justify-center space-x-1.5 text-[11px] bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-700/60 px-2.5 py-1.5 rounded-lg font-bold shadow-sm transition"
+              >
+                <Zap className="w-3 h-3 text-[#EF4444]" />
+                <span>What-If Studio</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <button 
+                  onClick={handleRunAnalysis}
+                  disabled={isLoading}
+                  title="Run supervisory analytics pipeline"
+                  className="flex items-center justify-center space-x-1 text-[10px] bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold px-2 py-1.5 rounded-lg shadow-sm transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span>Analytics</span>
+                </button>
+                <button 
+                  onClick={handleRegenerateSynth}
+                  disabled={isLoading}
+                  title="Reset synthetic data corpus"
+                  className="flex items-center justify-center space-x-1 text-[10px] bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 px-2 py-1.5 rounded-lg transition"
+                >
+                  <Database className="w-3 h-3 text-[#EF4444]" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
 
             {/* Sidebar Bottom Footer: GitHub Repo Link */}
             <div className="p-2.5 border-t border-slate-700/60 bg-black/30 flex-shrink-0">
@@ -650,8 +671,8 @@ export function App() {
                           </td>
                           <td className="py-4 px-6 text-right">
                             <button
-                              onClick={() => setActiveTab('findings')}
-                              className="bg-[#DCFCE7] hover:bg-[#bbf7d0] text-[#16A34A] border border-[#86EFAC] px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                              onClick={() => setSelectedEntityGap(gap)}
+                              className="bg-[#DCFCE7] hover:bg-[#bbf7d0] text-[#16A34A] border border-[#86EFAC] px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95"
                             >
                               Inspect Evidence
                             </button>
@@ -1032,6 +1053,157 @@ export function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: SPECIFIC ENTITY EXECUTION GAPS & EVIDENCE ================= */}
+      {selectedEntityGap && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6">
+          <div className="bg-white border border-[#CBD5E1] rounded-2xl max-w-6xl w-full max-h-[82vh] overflow-y-auto shadow-2xl p-5 md:p-6 space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#E2E8F0] pb-3">
+              <div>
+                <div className="flex items-center space-x-2.5 mb-1">
+                  <span className="text-xs font-mono font-bold bg-[#111827] text-white px-2.5 py-0.5 rounded-md">
+                    {selectedEntityGap.entityCode}
+                  </span>
+                  <span className="text-xs font-semibold text-[#64748B]">{selectedEntityGap.entityName}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    selectedEntityGap.executionGapSize > 40
+                      ? 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5]'
+                      : 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC]'
+                  }`}>
+                    {selectedEntityGap.executionGapSize > 40 ? `+${selectedEntityGap.executionGapSize}% SEVERE GAP` : 'CLEAN BASELINE'}
+                  </span>
+                </div>
+                <h2 className="text-lg font-extrabold text-[#0F172A]">
+                  Forensic Execution Gap Evidence Breakdown
+                </h2>
+              </div>
+              <button 
+                onClick={() => setSelectedEntityGap(null)}
+                className="text-[#64748B] hover:text-[#0F172A] p-1.5 rounded-lg hover:bg-[#F1F5F9] transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Gap Metrics Contrast Grid - Compact Single Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                <span className="text-[#64748B] block text-[10px] uppercase font-bold">Reported SLA</span>
+                <span className="text-base font-extrabold text-[#16A34A] block font-mono">
+                  {selectedEntityGap.headlineSlaPct}%
+                </span>
+                <span className="text-[10px] text-slate-400">Claimed Compliance</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                <span className="text-[#64748B] block text-[10px] uppercase font-bold">Evidence Quality</span>
+                <span className={`text-base font-extrabold block font-mono ${
+                  selectedEntityGap.evidenceQualityScore < 50 ? 'text-[#DC2626]' : 'text-[#334155]'
+                }`}>
+                  {selectedEntityGap.evidenceQualityScore}%
+                </span>
+                <span className="text-[10px] text-slate-400">Triage Integrity</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                <span className="text-[#64748B] block text-[10px] uppercase font-bold">Fast Closures (&lt;10m)</span>
+                <span className={`text-base font-extrabold block font-mono ${
+                  selectedEntityGap.fastClosePct > 30 ? 'text-[#DC2626]' : 'text-[#334155]'
+                }`}>
+                  {selectedEntityGap.fastClosePct}%
+                </span>
+                <span className="text-[10px] text-slate-400">Rubber-Stamps</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                <span className="text-[#64748B] block text-[10px] uppercase font-bold">Un-escalated Critical</span>
+                <span className={`text-base font-extrabold block font-mono ${
+                  selectedEntityGap.unescalatedCriticalPct > 40 ? 'text-[#DC2626]' : 'text-[#334155]'
+                }`}>
+                  {selectedEntityGap.unescalatedCriticalPct}%
+                </span>
+                <span className="text-[10px] text-slate-400">Buried Threats</span>
+              </div>
+            </div>
+
+            {/* Specific Entity Findings List (2-column layout for wide viewport) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#334155]">
+                  Active Supervisory Findings for {selectedEntityGap.entityCode} (
+                  {findings.filter(f => f.entity_code === selectedEntityGap.entityCode || f.entity_name === selectedEntityGap.entityName).length} Findings)
+                </h3>
+              </div>
+
+              {findings.filter(f => f.entity_code === selectedEntityGap.entityCode || f.entity_name === selectedEntityGap.entityName).length === 0 ? (
+                <div className="bg-[#F0FDF4] border border-[#BBF7D0] p-4 rounded-xl text-xs text-[#166534]">
+                  <strong className="block mb-1 font-bold">No Operational Execution Gaps Detected:</strong>
+                  This entity exhibits disciplined triage behavior consistent with sector peer baselines. Investigation steps and escalation timestamps align with reported metrics.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {findings
+                    .filter(f => f.entity_code === selectedEntityGap.entityCode || f.entity_name === selectedEntityGap.entityName)
+                    .map(finding => (
+                      <div 
+                        key={finding.id}
+                        className="bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] p-3.5 rounded-xl space-y-2 shadow-sm transition flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex items-center space-x-1.5 flex-wrap">
+                              <span className="text-[10px] font-mono font-bold bg-[#111827] text-[#4ADE80] px-2 py-0.5 rounded">
+                                {finding.rule_key}
+                              </span>
+                              <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                {finding.dimension_code}
+                              </span>
+                            </div>
+
+                            <div className="text-right flex-shrink-0 flex items-center space-x-2">
+                              <span className="text-xs font-bold text-[#DC2626] font-mono">
+                                Sev: {finding.severity_score}
+                              </span>
+                              <span className="text-[10px] text-[#64748B] font-mono">
+                                {(finding.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <h4 className="text-xs font-bold text-[#0F172A] mb-1.5">{finding.title}</h4>
+
+                          <p className="text-[11px] text-[#475569] leading-relaxed bg-[#F8FAFC] p-2 rounded-lg border border-[#E2E8F0]">
+                            <strong className="text-[#1E293B]">Rationale: </strong>{finding.rationale}
+                          </p>
+                        </div>
+
+                        {/* Evidence Records Preview */}
+                        {finding.evidence && finding.evidence.length > 0 && (
+                          <div className="space-y-1 pt-1">
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                              Forensic Logs ({finding.evidence.length})
+                            </div>
+                            <div className="space-y-1">
+                              {finding.evidence.slice(0, 2).map(ev => (
+                                <div key={ev.id} className="bg-slate-50 border border-slate-200 px-2 py-1.5 rounded text-[10px] flex items-center justify-between">
+                                  <div className="truncate mr-2">
+                                    <span className="font-mono font-bold text-[#2563EB]">{ev.record_id}</span>
+                                    <span className="text-slate-500 text-[9px] block truncate">{ev.note}</span>
+                                  </div>
+                                  <span className="text-[8px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">
+                                    {ev.role}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
