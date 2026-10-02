@@ -304,17 +304,6 @@ export function App() {
         <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-[#111827]">
           {/* ================= FIXED LEFT SIDEBAR ================= */}
           <aside className="w-60 bg-[#111827] text-white border-r border-slate-700/60 flex flex-col flex-shrink-0 h-full select-none">
-            {/* Sidebar Title / Status */}
-            <div className="px-3.5 py-3 border-b border-slate-700/60 flex items-center justify-between flex-shrink-0 bg-[#111827]">
-              <div className="flex items-center space-x-1.5 min-w-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 truncate">Supervisory Console</span>
-              </div>
-              <span className="text-[9px] bg-red-950/80 border border-red-700/50 text-red-300 px-1.5 py-0.2 rounded font-mono font-bold flex-shrink-0">
-                AIR-GAPPED
-              </span>
-            </div>
-
             {/* Menu List */}
             <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
               {sidebarMenuItems.map(tab => {
