@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Shield, AlertTriangle, Activity, EyeOff, Scale, CheckCircle2, 
   RefreshCw, Sliders, ArrowRight, Database, Lock, TrendingUp, Info, 
@@ -71,9 +72,16 @@ interface SilentAsset {
 }
 
 export function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'console'>('landing');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Route determines view: /dashboard is supervisory console, / (or others) is landing
+  const isDashboard = location.pathname === '/dashboard';
+  const currentView = isDashboard ? 'console' : 'landing';
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit'>('dashboard');
   const [entities, setEntities] = useState<Entity[]>([]);
+
   const [kpiGaps, setKpiGaps] = useState<KpiGap[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [silentAssets, setSilentAssets] = useState<SilentAsset[]>([]);
@@ -190,13 +198,26 @@ export function App() {
     { key: 'Resilience', label: 'Resilience' }
   ];
 
+  const sidebarMenuItems = [
+    { id: 'dashboard', label: 'Executive Dashboard', icon: Activity },
+    { id: 'gap', label: 'Headline KPIs vs Evidence Gap', icon: Scale, highlight: true },
+    { id: 'findings', label: 'Findings Explorer', icon: AlertTriangle, count: findings.length },
+    { id: 'negative', label: 'Negative Space Matrix', icon: EyeOff, count: silentAssets.length },
+    { id: 'queue', label: 'Review Queue', icon: CheckCircle2, count: reviewSamples.length },
+    { id: 'rules', label: 'Dynamic Rules Studio', icon: Sliders },
+    { id: 'validation', label: 'Validation Lab (Lift)', icon: TrendingUp },
+    { id: 'audit', label: 'Audit Trail & Integrity', icon: Lock }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#991B1B] selection:text-white">
+    <div className={`bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#991B1B] selection:text-white ${
+      currentView === 'console' ? 'h-screen overflow-hidden' : 'min-h-screen'
+    }`}>
       
       {/* ================= 1. APP HEADER / NAV BAR (#0B0F19) ================= */}
-      <header className="bg-[#0B0F19] text-white border-b border-white/[0.08] sticky top-0 z-40 px-6 py-3.5 shadow-md">
-        <div className={`${currentView === 'landing' ? 'max-w-[76.8rem]' : 'max-w-7xl'} mx-auto flex items-center justify-between`}>
-          <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => setCurrentView('landing')}>
+      <header className="bg-[#0B0F19] text-white border-b border-white/[0.08] sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
+        <div className="w-full mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => navigate('/')}>
             <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
               <Shield className="w-6 h-6 text-[#EF4444]" />
             </div>
@@ -226,7 +247,7 @@ export function App() {
                   <span>What-If Studio</span>
                 </button>
                 <button 
-                  onClick={() => setCurrentView('console')}
+                  onClick={() => navigate('/dashboard')}
                   className="flex items-center space-x-2 text-xs bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(153,27,27,0.35)] transition-all hover:scale-105 active:scale-95"
                 >
                   <span>Launch Supervisory Console</span>
@@ -243,7 +264,7 @@ export function App() {
                   <span>What-If Studio</span>
                 </button>
                 <button 
-                  onClick={() => setCurrentView('landing')}
+                  onClick={() => navigate('/')}
                   className="flex items-center space-x-1.5 text-xs bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 px-3 py-2 rounded-lg transition"
                 >
                   <Home className="w-3.5 h-3.5 text-[#EF4444]" />
@@ -269,65 +290,99 @@ export function App() {
             )}
           </div>
         </div>
-
-        {/* Tab Navigation (Visible in Console Mode) */}
-        {currentView === 'console' && (
-          <div className="max-w-7xl mx-auto flex space-x-1 mt-3.5 overflow-x-auto text-xs font-medium border-t border-white/[0.08] pt-2.5">
-            {[
-              { id: 'dashboard', label: 'Executive Dashboard', icon: Activity },
-              { id: 'gap', label: 'Headline KPIs vs Evidence Gap', icon: Scale, highlight: true },
-              { id: 'findings', label: 'Findings Explorer', icon: AlertTriangle, count: findings.length },
-              { id: 'negative', label: 'Negative Space Matrix', icon: EyeOff, count: silentAssets.length },
-              { id: 'queue', label: 'Review Queue', icon: CheckCircle2, count: reviewSamples.length },
-              { id: 'rules', label: 'Dynamic Rules Studio', icon: Sliders },
-              { id: 'validation', label: 'Validation Lab (Lift)', icon: TrendingUp },
-              { id: 'audit', label: 'Audit Trail & Integrity', icon: Lock }
-            ].map(tab => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg transition font-medium ${
-                    active 
-                      ? 'bg-[#991B1B] text-white font-bold shadow-[0_0_12px_rgba(153,27,27,0.35)]' 
-                      : tab.highlight 
-                        ? 'text-[#EF4444] bg-[#991B1B]/15 hover:bg-[#991B1B]/25 border border-[#991B1B]/30' 
-                        : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
-                  {tab.count !== undefined && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      active ? 'bg-white text-[#991B1B]' : 'bg-white/10 text-slate-300'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </header>
 
-      {/* ================= CONDITIONAL VIEW: LANDING PAGE OR CONSOLE ================= */}
+      {/* ================= CONDITIONAL VIEW: LANDING PAGE OR CONSOLE WITH LEFT SIDEBAR ================= */}
       {currentView === 'landing' ? (
         <HomePage 
-          onOpenConsole={() => setCurrentView('console')} 
+          onOpenConsole={() => navigate('/dashboard')} 
           onOpenScenarioStudio={() => setIsScenarioStudioOpen(true)}
         />
       ) : (
-        /* ================= SUPERVISORY OPERATIONAL CONSOLE ================= */
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-          
-          {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Top Stat Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        /* ================= SUPERVISORY OPERATIONAL CONSOLE (WITH FIXED LEFT SIDEBAR) ================= */
+        <div className="flex-1 flex flex-row overflow-hidden h-[calc(100vh-61px)]">
+          {/* ================= FIXED LEFT SIDEBAR ================= */}
+          <aside className="w-72 bg-[#0B0F19] text-white border-r border-white/[0.08] flex flex-col flex-shrink-0 h-full select-none">
+            {/* Sidebar Title / Status */}
+            <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Supervisory Console</span>
+              </div>
+              <span className="text-[10px] bg-red-950/80 border border-red-700/50 text-red-300 px-2 py-0.5 rounded font-mono font-bold">
+                AIR-GAPPED
+              </span>
+            </div>
+
+            {/* Menu List */}
+            <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+              {sidebarMenuItems.map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition text-xs font-semibold group ${
+                      active 
+                        ? 'bg-[#991B1B] text-white font-bold shadow-[0_0_15px_rgba(153,27,27,0.4)] border border-red-600/50' 
+                        : tab.highlight 
+                          ? 'text-[#EF4444] bg-[#991B1B]/10 hover:bg-[#991B1B]/20 border border-[#991B1B]/25 hover:border-[#991B1B]/40' 
+                          : 'text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 truncate">
+                      <div className={`p-1.5 rounded-lg transition ${
+                        active 
+                          ? 'bg-black/20 text-white' 
+                          : tab.highlight 
+                            ? 'bg-[#991B1B]/20 text-[#EF4444]' 
+                            : 'bg-white/5 text-slate-400 group-hover:text-white group-hover:bg-white/10'
+                      }`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+
+                    {tab.count !== undefined && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 flex-shrink-0 ${
+                        active 
+                          ? 'bg-white text-[#991B1B] shadow-sm' 
+                          : 'bg-white/10 text-slate-300 group-hover:bg-white/20'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Sidebar Bottom Footer Info */}
+            <div className="p-4 border-t border-white/[0.08] bg-black/20 text-slate-400 text-[11px] space-y-1.5">
+              <div className="flex items-center justify-between text-slate-300 font-semibold">
+                <span className="flex items-center space-x-1.5">
+                  <Lock className="w-3 h-3 text-[#EF4444]" />
+                  <span>Audit Chain</span>
+                </span>
+                <span className={isAuditValid ? "text-emerald-400 font-mono" : "text-red-400 font-mono"}>
+                  {isAuditValid ? "VALID (SHA-256)" : "TAMPER DETECTED"}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 truncate font-mono">
+                SIH26157 · NCIIPC Supervisory
+              </div>
+            </div>
+          </aside>
+
+          {/* ================= MAIN CONTENT AREA ================= */}
+          <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#F8FAFC]">
+            
+            {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                {/* Top Stat Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition">
                   <div className="flex items-center justify-between text-[#64748B] mb-1">
                     <span className="text-xs uppercase tracking-wider font-semibold">Priority Supervisory Target</span>
@@ -886,6 +941,7 @@ export function App() {
             </div>
           )}
         </main>
+      </div>
       )}
 
       {/* ================= MODAL: FINDING DETAIL WITH "WHY FLAGGED" ================= */}
