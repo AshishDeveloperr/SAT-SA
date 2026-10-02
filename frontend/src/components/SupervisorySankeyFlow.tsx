@@ -63,13 +63,13 @@ export const SupervisorySankeyFlow: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<SankeyNode | null>(NODES[0]);
 
   // Coordinate geometry
-  const colX = [40, 230, 440, 680, 900];
-  const nodeW = 120;
-  const nodeH = 48;
+  const colX = [30, 240, 470, 730, 970];
+  const nodeW = 165;
+  const nodeH = 56;
 
   const getNodePos = (node: SankeyNode) => {
     const x = colX[node.col];
-    const y = 50 + node.row * 90;
+    const y = 40 + node.row * 94;
     return { x, y };
   };
 
@@ -128,8 +128,8 @@ export const SupervisorySankeyFlow: React.FC = () => {
       {/* SVG Canvas */}
       <div className="w-full overflow-x-auto">
         <svg
-          viewBox="0 0 1060 360"
-          className="w-full min-w-[900px] h-[360px] select-none"
+          viewBox="0 0 1170 380"
+          className="w-full min-w-[1020px] h-[380px] select-none"
         >
           <defs>
             <linearGradient id="flowGradRed" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -205,22 +205,22 @@ export const SupervisorySankeyFlow: React.FC = () => {
                 {/* Node Text */}
                 <text
                   x={12}
-                  y={18}
+                  y={19}
                   className="text-[11px] font-bold fill-slate-900"
                 >
                   {node.label}
                 </text>
                 <text
                   x={12}
-                  y={32}
-                  className="text-[9px] fill-slate-500"
+                  y={34}
+                  className="text-[9.5px] fill-slate-500 font-medium"
                 >
-                  {node.sublabel.length > 17 ? node.sublabel.slice(0, 16) + '...' : node.sublabel}
+                  {node.sublabel}
                 </text>
                 <text
                   x={12}
-                  y={43}
-                  className="text-[8px] font-mono font-bold"
+                  y={48}
+                  className="text-[9px] font-mono font-bold"
                   fill={node.color}
                 >
                   {node.totalVolume}

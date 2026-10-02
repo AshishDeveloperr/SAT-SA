@@ -3,11 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Shield, AlertTriangle, Activity, EyeOff, Scale, CheckCircle2, 
   RefreshCw, Sliders, ArrowRight, Database, Lock, TrendingUp, Info, 
-  ChevronRight, X, ArrowLeft, Home, Zap
+  ChevronRight, X, ArrowLeft, Home, Zap, Github, ArrowUpRight
 } from 'lucide-react';
 import { HomePage } from './pages/home/HomePage';
 import { SupervisorySankeyFlow } from './components/SupervisorySankeyFlow';
 import { ScenarioStudioModal } from './components/ScenarioStudioModal';
+
 
 interface Entity {
   id: string;
@@ -214,8 +215,8 @@ export function App() {
       currentView === 'console' ? 'h-screen overflow-hidden' : 'min-h-screen'
     }`}>
       
-      {/* ================= 1. APP HEADER / NAV BAR (#0B0F19) ================= */}
-      <header className="bg-[#0B0F19] text-white border-b border-white/[0.08] sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
+      {/* ================= 1. APP HEADER / NAV BAR (#111827) ================= */}
+      <header className="bg-[#111827] text-white border-b border-slate-700/60 sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
         <div className="w-full mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3.5 cursor-pointer" onClick={() => navigate('/')}>
             <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
@@ -300,22 +301,22 @@ export function App() {
         />
       ) : (
         /* ================= SUPERVISORY OPERATIONAL CONSOLE (WITH FIXED LEFT SIDEBAR) ================= */
-        <div className="flex-1 flex flex-row overflow-hidden h-[calc(100vh-61px)]">
+        <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-[#111827]">
           {/* ================= FIXED LEFT SIDEBAR ================= */}
-          <aside className="w-72 bg-[#0B0F19] text-white border-r border-white/[0.08] flex flex-col flex-shrink-0 h-full select-none">
+          <aside className="w-60 bg-[#111827] text-white border-r border-slate-700/60 flex flex-col flex-shrink-0 h-full select-none">
             {/* Sidebar Title / Status */}
-            <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Supervisory Console</span>
+            <div className="px-3.5 py-3 border-b border-slate-700/60 flex items-center justify-between flex-shrink-0 bg-[#111827]">
+              <div className="flex items-center space-x-1.5 min-w-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 truncate">Supervisory Console</span>
               </div>
-              <span className="text-[10px] bg-red-950/80 border border-red-700/50 text-red-300 px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[9px] bg-red-950/80 border border-red-700/50 text-red-300 px-1.5 py-0.2 rounded font-mono font-bold flex-shrink-0">
                 AIR-GAPPED
               </span>
             </div>
 
             {/* Menu List */}
-            <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+            <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
               {sidebarMenuItems.map(tab => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
@@ -323,29 +324,29 @@ export function App() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition text-xs font-semibold group ${
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition text-[11px] font-semibold group ${
                       active 
-                        ? 'bg-[#991B1B] text-white font-bold shadow-[0_0_15px_rgba(153,27,27,0.4)] border border-red-600/50' 
+                        ? 'bg-[#991B1B] text-white font-bold shadow-[0_0_12px_rgba(153,27,27,0.4)] border border-red-600/50' 
                         : tab.highlight 
-                          ? 'text-[#EF4444] bg-[#991B1B]/10 hover:bg-[#991B1B]/20 border border-[#991B1B]/25 hover:border-[#991B1B]/40' 
-                          : 'text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                          ? 'text-[#EF4444] bg-[#991B1B]/15 hover:bg-[#991B1B]/25 border border-[#991B1B]/30 hover:border-[#991B1B]/50' 
+                          : 'text-slate-300 hover:text-white hover:bg-white/[0.08] border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center space-x-3 truncate">
-                      <div className={`p-1.5 rounded-lg transition ${
+                    <div className="flex items-center space-x-2.5 truncate">
+                      <div className={`p-1 rounded-md transition flex-shrink-0 ${
                         active 
                           ? 'bg-black/20 text-white' 
                           : tab.highlight 
-                            ? 'bg-[#991B1B]/20 text-[#EF4444]' 
-                            : 'bg-white/5 text-slate-400 group-hover:text-white group-hover:bg-white/10'
+                            ? 'bg-[#991B1B]/25 text-[#EF4444]' 
+                            : 'bg-white/[0.07] text-slate-400 group-hover:text-white group-hover:bg-white/10'
                       }`}>
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-3.5 h-3.5" />
                       </div>
                       <span className="truncate">{tab.label}</span>
                     </div>
 
                     {tab.count !== undefined && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 flex-shrink-0 ${
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ml-1.5 flex-shrink-0 ${
                         active 
                           ? 'bg-white text-[#991B1B] shadow-sm' 
                           : 'bg-white/10 text-slate-300 group-hover:bg-white/20'
@@ -358,83 +359,105 @@ export function App() {
               })}
             </nav>
 
-            {/* Sidebar Bottom Footer Info */}
-            <div className="p-4 border-t border-white/[0.08] bg-black/20 text-slate-400 text-[11px] space-y-1.5">
-              <div className="flex items-center justify-between text-slate-300 font-semibold">
-                <span className="flex items-center space-x-1.5">
-                  <Lock className="w-3 h-3 text-[#EF4444]" />
-                  <span>Audit Chain</span>
-                </span>
-                <span className={isAuditValid ? "text-emerald-400 font-mono" : "text-red-400 font-mono"}>
-                  {isAuditValid ? "VALID (SHA-256)" : "TAMPER DETECTED"}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-500 truncate font-mono">
-                SIH26157 · NCIIPC Supervisory
-              </div>
+            {/* Sidebar Bottom Footer: GitHub Repo Link */}
+            <div className="p-2.5 border-t border-slate-700/60 bg-black/30 flex-shrink-0">
+              <a
+                href="https://github.com/AshishDeveloperr/SIH2"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 hover:border-slate-600 shadow-sm transition group"
+              >
+                <div className="flex items-center space-x-2">
+                  <Github className="w-3.5 h-3.5 text-slate-300 group-hover:text-white" />
+                  <span>GitHub Repository</span>
+                </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </a>
             </div>
           </aside>
 
           {/* ================= MAIN CONTENT AREA ================= */}
-          <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#F8FAFC]">
+          <main className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#F8FAFC]">
+
             
             {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                {/* Top Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition">
-                  <div className="flex items-center justify-between text-[#64748B] mb-1">
-                    <span className="text-xs uppercase tracking-wider font-semibold">Priority Supervisory Target</span>
-                    <span className="p-1.5 bg-[#FEE2E2] rounded-lg text-[#DC2626]">
-                      <AlertTriangle className="w-4 h-4" />
-                    </span>
+                {/* Top Stat Cards - Compact Single Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {/* Card 1 */}
+                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
+                        Supervisory Target
+                      </div>
+                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
+                        CSE-POWER-01
+                      </div>
+                      <div className="text-[11px] text-[#DC2626] font-bold flex items-center gap-1 truncate">
+                        <span>Score: 58</span>
+                        <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold uppercase">High Risk</span>
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-[#FEE2E2] rounded-xl text-[#DC2626] flex-shrink-0 ml-2 shadow-sm">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-[#0F172A]">CSE-POWER-01</div>
-                  <div className="text-xs text-[#DC2626] mt-1 font-semibold flex items-center">
-                    Attention Score: 58 (HIGH RISK)
-                  </div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">Northern Power Grid Transmission</div>
-                </div>
 
-                <div className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition">
-                  <div className="flex items-center justify-between text-[#64748B] mb-1">
-                    <span className="text-xs uppercase tracking-wider font-semibold">Active Execution Gaps</span>
-                    <span className="p-1.5 bg-[#FEF3C7] rounded-lg text-[#D97706]">
-                      <Scale className="w-4 h-4" />
-                    </span>
+                  {/* Card 2 */}
+                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
+                        Active Execution Gaps
+                      </div>
+                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
+                        {findings.filter(f => f.kind === 'execution_gap').length} Gaps
+                      </div>
+                      <div className="text-[11px] text-[#D97706] font-semibold truncate">
+                        Fast-close &amp; unescalated
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-[#FEF3C7] rounded-xl text-[#D97706] flex-shrink-0 ml-2 shadow-sm">
+                      <Scale className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-[#0F172A]">
-                    {findings.filter(f => f.kind === 'execution_gap').length} Gaps
-                  </div>
-                  <div className="text-xs text-[#D97706] mt-1 font-semibold">Fast closures & un-escalated threats</div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">Discrepancy vs reported capability</div>
-                </div>
 
-                <div className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition">
-                  <div className="flex items-center justify-between text-[#64748B] mb-1">
-                    <span className="text-xs uppercase tracking-wider font-semibold">Silent Critical Assets</span>
-                    <span className="p-1.5 bg-[#EDE9FE] rounded-lg text-[#7C3AED]">
-                      <EyeOff className="w-4 h-4" />
-                    </span>
+                  {/* Card 3 */}
+                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
+                        Silent Critical Assets
+                      </div>
+                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
+                        {silentAssets.length} Systems
+                      </div>
+                      <div className="text-[11px] text-[#7C3AED] font-semibold truncate">
+                        &gt;14 days zero telemetry
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-[#EDE9FE] rounded-xl text-[#7C3AED] flex-shrink-0 ml-2 shadow-sm">
+                      <EyeOff className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-[#0F172A]">{silentAssets.length} Systems</div>
-                  <div className="text-xs text-[#7C3AED] mt-1 font-semibold">&gt;14 days zero telemetry</div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">SCADA & Core Directory Servers</div>
-                </div>
 
-                <div className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition">
-                  <div className="flex items-center justify-between text-[#64748B] mb-1">
-                    <span className="text-xs uppercase tracking-wider font-semibold">Review Efficiency Lift</span>
-                    <span className="p-1.5 bg-[#DCFCE7] rounded-lg text-[#16A34A]">
-                      <TrendingUp className="w-4 h-4" />
-                    </span>
+                  {/* Card 4 */}
+                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
+                        Review Efficiency Lift
+                      </div>
+                      <div className="text-lg font-black text-[#16A34A] tracking-tight truncate">
+                        3.42× Lift
+                      </div>
+                      <div className="text-[11px] text-[#16A34A] font-semibold truncate">
+                        vs Random Sampling
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-[#DCFCE7] rounded-xl text-[#16A34A] flex-shrink-0 ml-2 shadow-sm">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-[#16A34A]">3.42× Lift</div>
-                  <div className="text-xs text-[#16A34A] mt-1 font-semibold">vs Random Manual Sampling</div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">Proven in Validation Lab</div>
                 </div>
-              </div>
 
               {/* End-to-End Supervisory Telemetry & Detection Sankey Flow */}
               <SupervisorySankeyFlow />
