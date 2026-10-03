@@ -276,9 +276,6 @@ export function ResilienceDimensionPieChart({ entities }: ResilienceDimensionPie
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-slate-900 text-white border border-slate-700">
-              NCIIPC Supervisory Standard
-            </span>
             <h2 className="text-base font-bold text-[#0F172A]">
               8-Dimension Operational Resilience Capability Distribution
             </h2>

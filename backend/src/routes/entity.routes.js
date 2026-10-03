@@ -5,13 +5,17 @@ import {
   getEntities,
   getEntitySummary,
   getKpisVsEvidence,
-  getNegativeSpace
+  getNegativeSpace,
+  compareEntities
 } from '../controllers/entity.controller.js';
 
 export const entityRouter = Router();
 
 // GET /api/v1/entities - List all entities with attention scores & risk tiers
 entityRouter.get('/entities', asyncHandler(getEntities));
+
+// GET /api/v1/entities/compare - Peer cohort comparison with same-sector enforcement
+entityRouter.get('/entities/compare', asyncHandler(compareEntities));
 
 // GET /api/v1/entities/:id/summary - Detailed entity operational profile
 entityRouter.get('/entities/:id/summary', validateParamExists('id'), asyncHandler(getEntitySummary));

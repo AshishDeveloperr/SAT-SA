@@ -590,7 +590,7 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
   }, [findings, currentEntityCode, activeUploadedEntity]);
 
   return (
-    <div className="space-y-6 -mt-3 md:-mt-5">
+    <div className="space-y-6 pt-3 md:pt-4">
       {/* 1. Top 4 Operational Metrics for Current Ingestion Batch */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-white border border-[#E2E8F0] px-4 py-3 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-center justify-between">
@@ -1404,7 +1404,7 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center justify-center text-[10px] font-mono font-black bg-slate-900 text-emerald-400 px-2 py-1 rounded border border-slate-800 leading-none">
+                        <span className="inline-flex items-center justify-center text-[10px] font-mono font-black bg-slate-900 text-white px-2 py-1 rounded border border-slate-800 leading-none">
                           {finding.rule_key}
                         </span>
                         {finding.occurrences > 1 && (

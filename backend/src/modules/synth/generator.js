@@ -87,6 +87,36 @@ export async function generateSyntheticData() {
       region: 'East',
       maturity: 0.42, // LOW-MEDIUM: Overstretched analysts, slow response, missing cases
       description: 'Healthcare data exchange experiencing alert fatigue and missing investigation files.'
+    },
+    {
+      id: 'cse_bank_02',
+      code: 'CSE-BANK-02',
+      name: 'Metropolitan Commercial Trust & Payment Switch',
+      sector_id: 'sec_bfsi',
+      size_tier: 'TIER_1',
+      region: 'North',
+      maturity: 0.35, // LOW: Heavy metric gaming, unescalated carding alerts, fast rubber-stamping
+      description: 'Retail banking clearing node exhibiting artificial SLA suppression and high unescalated alert rates.'
+    },
+    {
+      id: 'cse_power_02',
+      code: 'CSE-POWER-02',
+      name: 'Southern Regional Hydro & Grid Dispatch Corp',
+      sector_id: 'sec_energy',
+      size_tier: 'TIER_1',
+      region: 'South',
+      maturity: 0.88, // HIGH: Disciplined SCADA maintenance and rapid CIRT escalation
+      description: 'Disciplined regional transmission utility with verified root-cause remediation workflows.'
+    },
+    {
+      id: 'cse_telco_02',
+      code: 'CSE-TELCO-02',
+      name: 'Metro Optical Fiber & Broadband Network',
+      sector_id: 'sec_telecom',
+      size_tier: 'TIER_2',
+      region: 'West',
+      maturity: 0.85, // HIGH: Genuine investigation steps and robust forensic logging
+      description: 'Metropolitan carrier node with thorough forensic triage notes.'
     }
   ];
 

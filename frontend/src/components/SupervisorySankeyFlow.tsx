@@ -241,9 +241,6 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
               <Layers className="w-5 h-5" />
             </span>
             <h3 className="font-bold text-slate-900 text-lg">Supervisory Telemetry &amp; Anomaly Sankey Flow</h3>
-            <span className="text-xs bg-red-50 text-red-800 px-2.5 py-0.5 rounded-full font-semibold border border-red-200">
-              Air-Gapped Ingestion
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             Real-time SVG dataflow routing periodic CSE submissions through dual-engine supervisory analytics into court-admissible decision ledger.

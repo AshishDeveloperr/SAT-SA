@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Printer,
   Download,
@@ -34,10 +35,52 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
   silentAssets,
   auditHash
 }) => {
-  if (!isOpen || !entity) return null;
+  // Lock body scroll and apply print class when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const entityFindings = findings.filter(f => f.entity_id === entity.id || f.entity_code === entity.code);
-  const entitySilentAssets = silentAssets.filter(a => a.entityCode === entity.code || a.entity_id === entity.id);
+    document.body.classList.add('sar-modal-open');
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.classList.remove('sar-modal-open');
+      document.body.style.overflow = origOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  // Group findings by rule_key so duplicate finding cards are consolidated
+  const entityFindings = useMemo(() => {
+    if (!entity || !findings) return [];
+    const raw = findings.filter(f => f.entity_id === entity.id || f.entity_code === entity.code);
+    const map = new Map<string, any>();
+    raw.forEach(f => {
+      const key = f.rule_key || f.id;
+      if (!map.has(key)) {
+        map.set(key, { ...f, occurrences: 1 });
+      } else {
+        const existing = map.get(key);
+        existing.occurrences = (existing.occurrences || 1) + 1;
+        if (f.severity_score && f.severity_score > (existing.severity_score || 0)) {
+          existing.severity_score = f.severity_score;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [findings, entity]);
+
+  const entitySilentAssets = useMemo(() => {
+    if (!entity || !silentAssets) return [];
+    return silentAssets.filter(a => a.entityCode === entity.code || a.entity_id === entity.id);
+  }, [silentAssets, entity]);
+
+  if (!isOpen || !entity) return null;
 
   const reportDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -49,6 +92,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
   const verificationHash = auditHash || 'e84b72c9a1d503ff8e9182bc443210ab78f219c0de340291ab8124ef9012cd34';
 
   const handlePrint = () => {
+    document.body.classList.add('sar-modal-open');
     window.print();
   };
 
@@ -71,13 +115,14 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
         risk_tier: entity.riskLevel || 'EVALUATED',
         headline_reported_sla_pct: kpiGap?.headlineSlaPct ?? 98.5,
         evidence_quality_score: kpiGap?.evidenceQualityScore ?? 45,
-        execution_gap_size: kpiGap?.executionGapSize ?? 53.5
+        supervisory_divergence_gap: kpiGap?.executionGapSize ?? 53.5
       },
-      execution_gap_findings: entityFindings.map(f => ({
+      supervisory_defect_findings: entityFindings.map(f => ({
         rule_key: f.rule_key,
         dimension: f.dimension_code,
         severity_score: f.severity_score,
         title: f.title,
+        occurrences: f.occurrences,
         rationale: f.rationale
       })),
       negative_space_silent_assets: entitySilentAssets.map(a => ({
@@ -107,13 +152,19 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+  return createPortal(
+    <div 
+      id="statutory-report-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       {/* Modal Container */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="sar-modal-container bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Modal Action Header (Excluded when printing) */}
-        <div className="print:hidden bg-[#111827] text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
+        <div className="sar-modal-header print:hidden bg-[#111827] text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
           <div className="flex items-center space-x-3">
             <div className="bg-[#991B1B]/20 p-2 rounded-xl border border-[#991B1B]/40 text-[#EF4444]">
               <FileText className="w-5 h-5 text-[#EF4444]" />
@@ -126,7 +177,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePrint}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 transition"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 transition cursor-pointer"
               title="Print document or save as clean PDF"
             >
               <Printer className="w-3.5 h-3.5 text-slate-300" />
@@ -134,7 +185,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
             </button>
             <button
               onClick={handleDownloadJson}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#991B1B] hover:bg-[#7F1D1D] text-xs font-bold rounded-lg transition"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#991B1B] hover:bg-[#7F1D1D] text-xs font-bold rounded-lg transition cursor-pointer"
               title="Export complete machine-readable audit bundle"
             >
               <Download className="w-3.5 h-3.5 text-white" />
@@ -142,7 +193,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -150,10 +201,10 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="flex-1 overflow-y-auto p-8 font-sans bg-white print:p-0 print:m-0 text-slate-900 space-y-6">
+        <div className="sar-document-body flex-1 overflow-y-auto p-8 font-sans bg-white print:p-0 print:m-0 text-slate-900 space-y-6">
           
           {/* Institutional Government Header */}
-          <div className="border-b-2 border-slate-900 pb-5 text-center relative">
+          <div className="sar-avoid-break border-b-2 border-slate-900 pb-5 text-center relative">
             <div className="text-[10px] tracking-widest font-black uppercase text-slate-600 mb-1">
               Government of India • National Security Council Secretariat
             </div>
@@ -179,7 +230,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
           </div>
 
           {/* Section 1: Entity & Executive Summary */}
-          <div>
+          <div className="sar-avoid-break">
             <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
               <Building2 className="w-4 h-4 text-slate-600" />
               <span>1. Target Critical Sector Entity (CSE) Profile</span>
@@ -205,10 +256,10 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
           </div>
 
           {/* Section 2: Supervisory Risk Evaluation */}
-          <div>
+          <div className="sar-avoid-break">
             <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
               <Scale className="w-4 h-4 text-slate-600" />
-              <span>2. Supervisory Attention Score &amp; Execution Gap Matrix</span>
+              <span>2. Supervisory Attention Score &amp; Operational Discrepancy Matrix</span>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
@@ -241,7 +292,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
               </div>
 
               <div className="p-3.5 bg-red-50/60 rounded-xl border border-red-200">
-                <span className="text-[10px] uppercase font-bold text-red-900 block">Execution Divergence Gap</span>
+                <span className="text-[10px] uppercase font-bold text-red-900 block">Supervisory Divergence Gap</span>
                 <div className="flex items-baseline space-x-2 mt-1">
                   <span className="text-2xl font-black text-red-700">
                     {kpiGap?.executionGapSize ? `+${kpiGap.executionGapSize} pts` : '+53.5 pts'}
@@ -256,25 +307,30 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
 
           {/* Section 3: Core Supervisory Defect Findings */}
           <div>
-            <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+            <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5 sar-avoid-break">
               <ShieldAlert className="w-4 h-4 text-slate-600" />
-              <span>3. Statutory Defect Findings (Execution Gaps &amp; Negative Space)</span>
+              <span>3. Statutory Defect Findings (Operational Discrepancies &amp; Negative Space)</span>
             </div>
             {entityFindings.length === 0 ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center space-x-2">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center space-x-2 sar-avoid-break">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>Zero supervisory defect findings observed. Entity demonstrates consistent high-discipline triage controls.</span>
               </div>
             ) : (
               <div className="space-y-2">
                 {entityFindings.map((f, idx) => (
-                  <div key={idx} className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 text-xs">
+                  <div key={idx} className="sar-avoid-break p-3 rounded-lg border border-slate-200 bg-slate-50/50 text-xs">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center space-x-2">
                         <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded">
                           {f.rule_key}
                         </span>
                         <span className="font-bold text-slate-900">{f.title}</span>
+                        {f.occurrences > 1 && (
+                          <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-300 px-1.5 py-0.5 rounded-full">
+                            {f.occurrences} batches
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-red-100 text-red-800">
                         Score: {f.severity_score}/100
@@ -289,7 +345,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
 
           {/* Section 4: Negative Space & Blind Spots */}
           {entitySilentAssets.length > 0 && (
-            <div>
+            <div className="sar-avoid-break">
               <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
                 <EyeOff className="w-4 h-4 text-slate-600" />
                 <span>4. Negative Space Audit: Critical Systems Without Telemetry (&gt;14 Days)</span>
@@ -307,7 +363,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
                     {entitySilentAssets.map((ast, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
+                      <tr key={idx} className="hover:bg-slate-50 sar-avoid-break">
                         <td className="p-2.5 font-bold text-slate-900">{ast.external_id || ast.asset_id}</td>
                         <td className="p-2.5 font-sans font-medium text-slate-800">{ast.name}</td>
                         <td className="p-2.5 text-red-700 font-bold">Tier {ast.criticality}</td>
@@ -326,7 +382,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
           )}
 
           {/* Section 5: Statutory Recommendation & Directives */}
-          <div>
+          <div className="sar-avoid-break">
             <div className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
               <AlertTriangle className="w-4 h-4 text-slate-600" />
               <span>5. Statutory Supervisory Directive &amp; Compliance Timetable</span>
@@ -343,13 +399,13 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
               <p className="text-[11px] text-slate-300 leading-relaxed">
                 Pursuant to powers conferred under Section 70B of the Information Technology Act 2000 read with NCIIPC Rules, 
                 the management of <strong>{entity.name}</strong> is hereby directed to submit a comprehensive forensic remediation plan 
-                accounting for the observed operational execution gaps, silent SCADA/core systems, and un-escalated high-severity incidents.
+                accounting for the observed operational discrepancies, silent SCADA/core systems, and un-escalated high-severity incidents.
               </p>
             </div>
           </div>
 
           {/* Section 6: Cryptographic Ledger Seal & Signature */}
-          <div className="pt-4 border-t-2 border-slate-900 text-xs">
+          <div className="sar-avoid-break pt-4 border-t-2 border-slate-900 text-xs">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center space-x-1">
@@ -381,6 +437,9 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+
+export default StatutoryReportModal;

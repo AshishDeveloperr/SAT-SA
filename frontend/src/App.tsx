@@ -5,7 +5,8 @@ import {
   RefreshCw, Sliders, ArrowRight, Database, Lock, TrendingUp, Info, 
   ChevronRight, X, ArrowLeft, Home, Zap, Github, ArrowUpRight,
   FileText, Calendar, Building2, Eye, ShieldAlert, ShieldCheck, Printer, Download,
-  Search, Filter, ChevronLeft, RotateCcw, UploadCloud
+  Search, Filter, ChevronLeft, RotateCcw, UploadCloud, ChevronDown, Terminal, Layers,
+  GitCompare, Check, Clock
 } from 'lucide-react';
 import { HomePage } from './pages/home/HomePage';
 import { SupervisorySankeyFlow } from './components/SupervisorySankeyFlow';
@@ -13,6 +14,8 @@ import { ScenarioStudioModal } from './components/ScenarioStudioModal';
 import { StatutoryReportModal } from './components/StatutoryReportModal';
 import { ResilienceDimensionPieChart } from './components/ResilienceDimensionPieChart';
 import { EvidenceIngestionEnclave } from './components/EvidenceIngestionEnclave';
+import { FindingEvidenceModal } from './components/FindingEvidenceModal';
+import { PeerComparisonView } from './components/PeerComparisonView';
 
 interface Entity {
   id: string;
@@ -57,6 +60,8 @@ interface KpiGap {
   entityId: string;
   entityCode: string;
   entityName: string;
+  sectorCode?: string;
+  sectorName?: string;
   headlineSlaPct: number;
   evidenceQualityScore: number;
   executionGapSize: number;
@@ -76,17 +81,32 @@ interface SilentAsset {
   entityName: string;
 }
 
+function getPageNumbers(current: number, total: number): (number | string)[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
   // Route determines view: /dashboard and its sub-routes activate supervisory console
-  const isDashboard = location.pathname.startsWith('/dashboard');
+  const isDashboard = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/compare');
   const currentView = isDashboard ? 'console' : 'landing';
 
   // Compute activeTab dynamically from URL pathname
-  const activeTab = useMemo<'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit'>(() => {
+  const activeTab = useMemo<'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit' | 'compare'>(() => {
+    if (location.pathname.startsWith('/compare')) return 'compare';
     const sub = location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase().trim();
+    if (sub === 'compare') return 'compare';
     if (sub === 'upload' || sub === 'inject' || sub === 'inject-logs' || sub === 'telemetry' || sub === 'ingest' || sub === 'intake' || sub === 'evidence-intake') return 'upload';
     if (sub === 'gap' || sub === 'kpis' || sub === 'kpis-vs-evidence') return 'gap';
     if (sub === 'findings') return 'findings';
@@ -99,13 +119,53 @@ export function App() {
   }, [location.pathname]);
 
   // Navigate to specific sub-route
-  const setActiveTab = (tab: 'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit') => {
+  const setActiveTab = (tab: 'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit' | 'compare') => {
     if (tab === 'dashboard') navigate('/dashboard');
     else if (tab === 'upload') navigate('/dashboard/inject-logs');
     else if (tab === 'gap') navigate('/dashboard/kpis-vs-evidence');
+    else if (tab === 'compare') navigate('/compare');
     else if (tab === 'negative') navigate('/dashboard/negative-space');
     else if (tab === 'queue') navigate('/dashboard/review-queue');
     else navigate(`/dashboard/${tab}`);
+  };
+
+  // Peer Cohort Comparison State
+  const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
+  const [selectedCompareEntities, setSelectedCompareEntities] = useState<string[]>([]);
+  const [lockedSector, setLockedSector] = useState<string | null>(null);
+
+  const handleToggleCompareEntity = (entityCode: string, sectorCode: string) => {
+    if (selectedCompareEntities.includes(entityCode)) {
+      const next = selectedCompareEntities.filter(c => c !== entityCode);
+      setSelectedCompareEntities(next);
+      if (next.length === 0) {
+        setLockedSector(null);
+      }
+    } else {
+      if (selectedCompareEntities.length === 0) {
+        setLockedSector(sectorCode);
+        setSelectedCompareEntities([entityCode]);
+      } else {
+        if (lockedSector && sectorCode !== lockedSector) {
+          alert(`Cross-sector comparison prohibited. Selected entity belongs to ${sectorCode}, but current cohort is locked to ${lockedSector}.`);
+          return;
+        }
+        setSelectedCompareEntities([...selectedCompareEntities, entityCode]);
+      }
+    }
+  };
+
+  const handleLaunchComparison = () => {
+    if (selectedCompareEntities.length < 2) {
+      alert('Please select at least 2 entities from the same sector cohort to compare.');
+      return;
+    }
+    navigate(`/compare?entities=${selectedCompareEntities.join(',')}`);
+  };
+
+  const handleClearCompareSelection = () => {
+    setSelectedCompareEntities([]);
+    setLockedSector(null);
   };
   const [entities, setEntities] = useState<Entity[]>([]);
 
@@ -134,7 +194,18 @@ export function App() {
   const [findingDimensionFilter, setFindingDimensionFilter] = useState<string>('ALL');
   const [findingSeverityFilter, setFindingSeverityFilter] = useState<string>('ALL');
   const [findingCurrentPage, setFindingCurrentPage] = useState<number>(1);
-  const [findingPageSize, setFindingPageSize] = useState<number>(6);
+  const [findingPageSize, setFindingPageSize] = useState<number>(10);
+  const [findingGroupPageSize, setFindingGroupPageSize] = useState<number>(4);
+  const [findingDimensionPageSize, setFindingDimensionPageSize] = useState<number>(4);
+  const [findingGroupBy, setFindingGroupBy] = useState<'entity' | 'dimension' | 'none'>('entity');
+  const [findingFlatViewMode, setFindingFlatViewMode] = useState<'table' | 'cards'>('table');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [expandedGroupFindings, setExpandedGroupFindings] = useState<Record<string, boolean>>({});
+  const [inspectingFinding, setInspectingFinding] = useState<any | null>(null);
+
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // 4 Metric cards stats for Findings Explorer
   const findingsStats = useMemo(() => {
@@ -152,6 +223,57 @@ export function App() {
 
     return { total, critical, entitiesAffected, avgSeverity, dominantDim };
   }, [findings]);
+
+  // 4 Metric cards stats for Negative Space Reasoning
+  const negativeSpaceStats = useMemo(() => {
+    const totalSilent = silentAssets.length;
+    const maxDays = totalSilent > 0 ? Math.max(...silentAssets.map(a => a.daysSilent || 0)) : 0;
+    const avgDays = totalSilent > 0 
+      ? Math.round(silentAssets.reduce((acc, a) => acc + (a.daysSilent || 0), 0) / totalSilent) 
+      : 0;
+    const tier5Count = silentAssets.filter(a => (a.criticality || 0) >= 5).length;
+    const entitiesAffected = new Set(silentAssets.map(a => a.entityCode)).size;
+    const nsFindings = findings.filter(f => 
+      f.rule_key?.startsWith('NS') || 
+      f.dimension_code === 'COVERAGE' || 
+      f.kind?.toLowerCase().includes('negative')
+    );
+    const nsFindingsCount = nsFindings.length;
+
+    return { totalSilent, maxDays, avgDays, tier5Count, entitiesAffected, nsFindingsCount };
+  }, [silentAssets, findings]);
+
+  // 4 Metric cards stats for Headline KPIs vs Underlying Evidence Analysis
+  const kpiGapStats = useMemo(() => {
+    const total = kpiGaps.length;
+    if (total === 0) {
+      return {
+        avgReportedSla: 96.3,
+        avgEvidenceScore: 62.6,
+        peakGap: 95,
+        peakEntity: 'CSE-TELCO-01',
+        severeCount: 2,
+        severePct: 40
+      };
+    }
+    const avgReportedSla = Number((kpiGaps.reduce((acc, g) => acc + (g.headlineSlaPct || 0), 0) / total).toFixed(1));
+    const avgEvidenceScore = Number((kpiGaps.reduce((acc, g) => acc + (g.evidenceQualityScore || 0), 0) / total).toFixed(1));
+    const sortedByGap = [...kpiGaps].sort((a, b) => (b.executionGapSize || 0) - (a.executionGapSize || 0));
+    const peakGap = sortedByGap[0]?.executionGapSize || 0;
+    const peakEntity = sortedByGap[0]?.entityCode || 'N/A';
+    const severeEntities = kpiGaps.filter(g => (g.executionGapSize || 0) > 40);
+    const severeCount = severeEntities.length;
+    const severePct = Math.round((severeCount / total) * 100);
+
+    return {
+      avgReportedSla,
+      avgEvidenceScore,
+      peakGap,
+      peakEntity,
+      severeCount,
+      severePct
+    };
+  }, [kpiGaps]);
 
   // Unique entities for filter dropdown
   const findingEntitiesList = useMemo(() => {
@@ -193,19 +315,115 @@ export function App() {
     });
   }, [findings, findingSearchQuery, findingEntityFilter, findingDimensionFilter, findingSeverityFilter]);
 
-  // Total pages
-  const totalFindingPages = Math.ceil(filteredFindings.length / findingPageSize) || 1;
-
-  // Current page slice
+  // Flat findings pagination
+  const totalFlatPages = Math.max(1, Math.ceil(filteredFindings.length / findingPageSize));
+  const safeFlatPage = Math.min(findingCurrentPage, totalFlatPages);
   const paginatedFindings = useMemo(() => {
-    const start = (findingCurrentPage - 1) * findingPageSize;
+    const start = (safeFlatPage - 1) * findingPageSize;
     return filteredFindings.slice(start, start + findingPageSize);
-  }, [filteredFindings, findingCurrentPage, findingPageSize]);
+  }, [filteredFindings, safeFlatPage, findingPageSize]);
+
+  // Grouped findings by Entity (CSE)
+  const groupedFindingsByEntity = useMemo(() => {
+    const map: Record<string, { entityCode: string; entityName: string; sector: string; findings: Finding[] }> = {};
+    filteredFindings.forEach(f => {
+      const code = f.entity_code || 'OTHER';
+      if (!map[code]) {
+        const ent = entities.find(e => e.code === code);
+        map[code] = {
+          entityCode: code,
+          entityName: f.entity_name || ent?.name || code,
+          sector: ent?.sector_name || 'CRITICAL INFRASTRUCTURE',
+          findings: []
+        };
+      }
+      map[code].findings.push(f);
+    });
+    return Object.values(map);
+  }, [filteredFindings, entities]);
+
+  const totalEntityPages = Math.max(1, Math.ceil(groupedFindingsByEntity.length / findingGroupPageSize));
+  const safeEntityPage = Math.min(findingCurrentPage, totalEntityPages);
+  const paginatedGroupedFindingsByEntity = useMemo(() => {
+    const start = (safeEntityPage - 1) * findingGroupPageSize;
+    return groupedFindingsByEntity.slice(start, start + findingGroupPageSize);
+  }, [groupedFindingsByEntity, safeEntityPage, findingGroupPageSize]);
+
+  // Grouped findings by Dimension
+  const groupedFindingsByDimension = useMemo(() => {
+    const map: Record<string, { dimensionCode: string; findings: Finding[] }> = {};
+    filteredFindings.forEach(f => {
+      const dim = f.dimension_code || 'General';
+      if (!map[dim]) {
+        map[dim] = {
+          dimensionCode: dim,
+          findings: []
+        };
+      }
+      map[dim].findings.push(f);
+    });
+    return Object.values(map);
+  }, [filteredFindings]);
+
+  const totalDimensionPages = Math.max(1, Math.ceil(groupedFindingsByDimension.length / findingDimensionPageSize));
+  const safeDimensionPage = Math.min(findingCurrentPage, totalDimensionPages);
+  const paginatedGroupedFindingsByDimension = useMemo(() => {
+    const start = (safeDimensionPage - 1) * findingDimensionPageSize;
+    return groupedFindingsByDimension.slice(start, start + findingDimensionPageSize);
+  }, [groupedFindingsByDimension, safeDimensionPage, findingDimensionPageSize]);
+
+  // Active pagination metadata based on findingGroupBy
+  const activeFindingTotalPages = findingGroupBy === 'entity'
+    ? totalEntityPages
+    : findingGroupBy === 'dimension'
+    ? totalDimensionPages
+    : totalFlatPages;
+
+  const activeFindingCurrentPage = findingGroupBy === 'entity'
+    ? safeEntityPage
+    : findingGroupBy === 'dimension'
+    ? safeDimensionPage
+    : safeFlatPage;
 
   // Reset to page 1 whenever any filter changes
   useEffect(() => {
     setFindingCurrentPage(1);
-  }, [findingSearchQuery, findingEntityFilter, findingDimensionFilter, findingSeverityFilter, findingPageSize]);
+  }, [findingSearchQuery, findingEntityFilter, findingDimensionFilter, findingSeverityFilter, findingPageSize, findingGroupPageSize, findingDimensionPageSize, findingGroupBy]);
+
+  // Review Queue Filter & Pagination States (15 records per page)
+  const [queueCurrentPage, setQueueCurrentPage] = useState<number>(1);
+  const queuePageSize = 15;
+  const [queueSearchQuery, setQueueSearchQuery] = useState<string>('');
+  const [queueStrategyFilter, setQueueStrategyFilter] = useState<string>('ALL');
+  const [queueStatusFilter, setQueueStatusFilter] = useState<string>('ALL');
+
+  const filteredReviewSamples = useMemo(() => {
+    return reviewSamples.filter(smp => {
+      if (queueStrategyFilter !== 'ALL' && smp.strategy !== queueStrategyFilter) return false;
+      if (queueStatusFilter === 'PENDING' && smp.reviewed) return false;
+      if (queueStatusFilter === 'REVIEWED' && !smp.reviewed) return false;
+      if (queueSearchQuery.trim()) {
+        const q = queueSearchQuery.toLowerCase().trim();
+        const matchesEntity = smp.entity_code?.toLowerCase().includes(q);
+        const matchesRecord = smp.record_id?.toLowerCase().includes(q);
+        const matchesReasons = Array.isArray(smp.reasons) && smp.reasons.some((r: string) => r.toLowerCase().includes(q));
+        if (!matchesEntity && !matchesRecord && !matchesReasons) return false;
+      }
+      return true;
+    });
+  }, [reviewSamples, queueStrategyFilter, queueStatusFilter, queueSearchQuery]);
+
+  const totalQueuePages = Math.max(1, Math.ceil(filteredReviewSamples.length / queuePageSize));
+  const safeQueuePage = Math.min(queueCurrentPage, totalQueuePages);
+
+  const paginatedReviewSamples = useMemo(() => {
+    const start = (safeQueuePage - 1) * queuePageSize;
+    return filteredReviewSamples.slice(start, start + queuePageSize);
+  }, [filteredReviewSamples, safeQueuePage, queuePageSize]);
+
+  useEffect(() => {
+    setQueueCurrentPage(1);
+  }, [queueSearchQuery, queueStrategyFilter, queueStatusFilter]);
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -300,9 +518,16 @@ export function App() {
     try {
       const res = await fetch(`/api/v1/findings/${findingId}`);
       const json = await res.json();
-      setSelectedFinding(json.data);
+      if (json.data) {
+        setInspectingFinding(json.data);
+      } else {
+        const local = findings.find(f => f.id === findingId);
+        if (local) setInspectingFinding(local);
+      }
     } catch (err) {
       console.error(err);
+      const local = findings.find(f => f.id === findingId);
+      if (local) setInspectingFinding(local);
     }
   };
 
@@ -327,6 +552,7 @@ export function App() {
     { id: 'dashboard', path: '/dashboard', label: 'Executive Dashboard', icon: Activity },
     { id: 'upload', path: '/dashboard/inject-logs', label: 'Inject Telemetry & Logs', icon: UploadCloud, highlight: true },
     { id: 'gap', path: '/dashboard/kpis-vs-evidence', label: 'Headline KPIs vs Evidence Gap', icon: Scale },
+    { id: 'compare', path: '/compare', label: 'Peer Cohort Comparison', icon: GitCompare },
     { id: 'findings', path: '/dashboard/findings', label: 'Findings Explorer', icon: AlertTriangle, count: findings.length },
     { id: 'negative', path: '/dashboard/negative-space', label: 'Negative Space Matrix', icon: EyeOff, count: silentAssets.length },
     { id: 'queue', path: '/dashboard/review-queue', label: 'Review Queue', icon: CheckCircle2, count: reviewSamples.length },
@@ -529,36 +755,11 @@ export function App() {
           </aside>
 
           {/* ================= MAIN CONTENT AREA ================= */}
-          <main className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 space-y-6 bg-[#F8FAFC]">
+          <main className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-6 md:px-7 md:pt-5 md:pb-8 space-y-5 bg-[#F8FAFC]">
 
-            
             {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                {/* Executive Dashboard Header Bar with Ingestion Shortcut */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h1 className="text-xl font-black text-slate-900 tracking-tight">National Cyber Resilience & Supervisory Posture</h1>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        Live Consolidated
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Cross-sector macro supervision, latent failure detection, and peer resilience benchmarking across Critical Sector Entities.
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setActiveTab('upload')}
-                      className="inline-flex items-center space-x-2 text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-sm transition hover:scale-105 active:scale-95"
-                    >
-                      <UploadCloud className="w-4 h-4 text-white" />
-                      <span>Inject Telemetry & Logs</span>
-                    </button>
-                  </div>
-                </div>
-
+              <div className="space-y-5">
                 {/* Top Stat Cards - Elegant & Compact */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   {/* Card 1: Supervisory Target */}
@@ -836,14 +1037,14 @@ export function App() {
                   })}
                 </div>
 
-                <div className="bg-slate-900 text-slate-200 p-3 rounded-xl text-xs flex items-center justify-between border border-slate-700">
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs flex items-center justify-between shadow-xs">
                   <div className="flex items-center space-x-2.5">
-                    <div className="p-1 rounded-lg bg-red-950/80 text-red-400 border border-red-700/60">
+                    <div className="p-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200">
                       <Scale className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="font-bold text-white">Supervisory Significance: </span>
-                      <span className="text-slate-300">
+                      <span className="font-bold text-slate-900">Supervisory Significance: </span>
+                      <span className="text-slate-600">
                         In mature SOC assessments, entities often "game" KPIs by reducing closure times while latent incident counts surge. SAT-SA exposes this 9-month divergence automatically.
                       </span>
                     </div>
@@ -965,88 +1166,318 @@ export function App() {
 
           {/* ================= TAB 2: HEADLINE KPIS VS UNDERLYING EVIDENCE ================= */}
           {activeTab === 'gap' && (
-            <div className="space-y-6">
-              <div className="bg-[#FEF3C7] border border-[#FCD34D] p-5 rounded-2xl flex items-start space-x-3.5 text-xs text-[#92400E] shadow-sm">
-                <Info className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="font-bold text-sm block text-[#78350F] mb-1">
-                    Core Supervisory Problem: Operational Discrepancy
-                  </strong>
-                  Documented metrics, self-assessments, and reported SLAs (e.g. "97% SLA compliance") often disguise operational dysfunction.
-                  SAT-SA contrasts headline reported numbers against forensic evidence quality (fast closures, zero investigation steps, un-escalated critical threats) to expose supervisory risk.
+            <div className="space-y-4">
+              {/* 4 Summary Metric Cards (Executive & Compact) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {/* Card 1: Reported Headline SLA */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50/90 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Reported Headline SLA
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-emerald-600 font-mono">
+                          {kpiGapStats.avgReportedSla}%
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Cohort average
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200/60 shrink-0 ml-2">
+                    Paper SLA
+                  </span>
+                </div>
+
+                {/* Card 2: Evidence Quality Score */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                      <Activity className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Evidence Quality Score
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-amber-600 font-mono">
+                          {kpiGapStats.avgEvidenceScore}%
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Triage integrity
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200/60 shrink-0 ml-2">
+                    Ground Truth
+                  </span>
+                </div>
+
+                {/* Card 3: Peak Discrepancy Gap */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-red-50/90 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Peak Discrepancy Gap
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-red-600 font-mono">
+                          +{kpiGapStats.peakGap}%
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          {kpiGapStats.peakEntity}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200/60 shrink-0 ml-2">
+                    Severe Gap
+                  </span>
+                </div>
+
+                {/* Card 4: Severe Execution Gaps */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-purple-50/90 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Severe Execution Gaps
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-purple-700 font-mono">
+                          {kpiGapStats.severeCount} Entities
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          {kpiGapStats.severePct}% of cohort
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 border border-purple-200/60 shrink-0 ml-2">
+                    Notice Reqd
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
-                <div className="px-6 py-4 border-b border-[#E2E8F0] bg-slate-50/50">
-                  <h2 className="text-base font-bold text-[#0F172A]">Headline Reported KPIs vs Underlying Evidence Analysis</h2>
-                  <p className="text-xs text-[#64748B]">Entities ranked by Discrepancy Gap Size (Reported SLA % − Forensic Evidence Quality %)</p>
+              <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]">
+                <div className="px-4 py-2.5 border-b border-[#E2E8F0] bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-[#0F172A] leading-tight">Headline Reported KPIs vs Underlying Evidence Analysis</h2>
+                    <p className="text-[11px] text-[#64748B]">Entities ranked by Discrepancy Gap Size (Reported SLA % − Forensic Evidence Quality %)</p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        const next = !isCompareMode;
+                        setIsCompareMode(next);
+                        if (!next) handleClearCompareSelection();
+                      }}
+                      className={`flex items-center space-x-1 px-2.5 py-1 rounded-md text-[11px] font-bold border transition shadow-xs ${
+                        isCompareMode
+                          ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-500/20'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      <GitCompare className="w-3 h-3 text-[#991B1B]" />
+                      <span>{isCompareMode ? 'Exit Compare Mode' : 'Compare Entities'}</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Floating Dock for Entity Comparison Selection (Light Mode) */}
+                {isCompareMode && (
+                  <div className="bg-gradient-to-r from-red-50/80 via-slate-50 to-slate-100/90 text-slate-800 px-4 py-2 border-b border-red-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all text-xs shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center space-x-1.5 font-bold text-slate-800 text-[11px]">
+                        <div className="w-5 h-5 rounded bg-red-100 border border-red-200 flex items-center justify-center text-[#991B1B]">
+                          <GitCompare className="w-3 h-3 text-[#991B1B]" />
+                        </div>
+                        <span>Peer Cohort:</span>
+                      </div>
+
+                      {lockedSector ? (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200 shadow-xs">
+                          Locked: {lockedSector} Sector
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Click checkboxes below to select same-sector peers
+                        </span>
+                      )}
+
+                      {selectedCompareEntities.length > 0 && (
+                        <div className="flex items-center gap-1.5 ml-1">
+                          {selectedCompareEntities.map(code => (
+                            <span
+                              key={code}
+                              className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white text-slate-800 border border-slate-300 shadow-xs"
+                            >
+                              <span>{code}</span>
+                              <button
+                                onClick={() => {
+                                  const item = kpiGaps.find(g => g.entityCode === code);
+                                  handleToggleCompareEntity(code, item?.sectorCode || 'OTHER');
+                                }}
+                                className="text-slate-400 hover:text-red-600 ml-1 font-bold text-xs leading-none"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      {selectedCompareEntities.length > 0 && (
+                        <button
+                          onClick={handleClearCompareSelection}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 rounded-md transition"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <button
+                        onClick={handleLaunchComparison}
+                        disabled={selectedCompareEntities.length < 2}
+                        className="flex items-center space-x-1.5 px-3.5 py-1 rounded-md text-[11px] font-bold bg-[#991B1B] hover:bg-[#7F1D1D] text-white transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs hover:scale-105 active:scale-95"
+                      >
+                        <span>Launch Compare {selectedCompareEntities.length >= 2 ? `(${selectedCompareEntities.length})` : ''}</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#F8FAFC] text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0] font-semibold">
+                    <thead className="bg-[#F8FAFC] text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0] font-semibold text-[10px]">
                       <tr>
-                        <th className="py-3 px-6">Entity</th>
-                        <th className="py-3 px-6">Reported Headline SLA</th>
-                        <th className="py-3 px-6">Evidence Quality Score</th>
-                        <th className="py-3 px-6">Discrepancy Gap Size</th>
-                        <th className="py-3 px-6">Fast Closures (&lt;10m)</th>
-                        <th className="py-3 px-6">Un-escalated Critical</th>
-                        <th className="py-3 px-6 text-right">Supervisory Action</th>
+                        {isCompareMode && (
+                          <th className="py-2 px-2.5 w-8 text-center">
+                            <span>Select</span>
+                          </th>
+                        )}
+                        <th className="py-2 px-3">Entity</th>
+                        <th className="py-2 px-3">Reported Headline SLA</th>
+                        <th className="py-2 px-3">Evidence Quality Score</th>
+                        <th className="py-2 px-3">Discrepancy Gap Size</th>
+                        <th className="py-2 px-3">Fast Closures (&lt;10m)</th>
+                        <th className="py-2 px-3">Un-escalated Critical</th>
+                        <th className="py-2 px-3 text-right">Supervisory Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E2E8F0]">
-                      {kpiGaps.map(gap => (
-                        <tr key={gap.entityId} className={`hover:bg-[#F1F5F9] transition ${gap.executionGapSize > 40 ? 'bg-[#FEF2F2]/60' : ''}`}>
-                          <td className="py-4 px-6">
-                            <div className="font-bold text-sm text-[#0F172A]">{gap.entityCode}</div>
-                            <div className="text-[11px] text-[#64748B]">{gap.entityName}</div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="font-extrabold text-[#16A34A] text-sm font-mono">
-                              {gap.headlineSlaPct}%
-                            </span>
-                            <span className="text-[10px] text-[#64748B] block">Reported in SLA</span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className={`font-extrabold text-sm font-mono ${gap.evidenceQualityScore < 50 ? 'text-[#DC2626]' : 'text-[#334155]'}`}>
-                              {gap.evidenceQualityScore}%
-                            </span>
-                            <span className="text-[10px] text-[#64748B] block">Triage integrity</span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center space-x-2">
-                              <span className={`text-base font-extrabold font-mono ${gap.executionGapSize > 40 ? 'text-[#DC2626]' : 'text-[#334155]'}`}>
-                                +{gap.executionGapSize}%
-                              </span>
-                              {gap.executionGapSize > 40 && (
-                                <span className="text-[10px] bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] px-2 py-0.5 rounded-full font-bold">
-                                  SEVERE GAP
+                      {kpiGaps.map(gap => {
+                        const isSelected = selectedCompareEntities.includes(gap.entityCode);
+                        const isSectorDisabled = lockedSector !== null && (gap.sectorCode || 'OTHER') !== lockedSector;
+
+                        return (
+                          <tr
+                            key={gap.entityId}
+                            className={`transition ${
+                              isSelected ? 'bg-red-50/60 font-semibold' : ''
+                            } ${
+                              isSectorDisabled ? 'opacity-35 bg-slate-50/80 cursor-not-allowed' : 'hover:bg-[#F1F5F9]'
+                            } ${
+                              !isSelected && !isSectorDisabled && gap.executionGapSize > 40 ? 'bg-[#FEF2F2]/60' : ''
+                            }`}
+                          >
+                            {isCompareMode && (
+                              <td className="py-2 px-2.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  disabled={isSectorDisabled}
+                                  onChange={() => handleToggleCompareEntity(gap.entityCode, gap.sectorCode || 'OTHER')}
+                                  className="w-3.5 h-3.5 rounded text-[#991B1B] focus:ring-red-500 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                                  title={isSectorDisabled ? `Sector locked to ${lockedSector}. Cannot cross-compare sectors.` : `Select ${gap.entityCode}`}
+                                />
+                              </td>
+                            )}
+                            <td className="py-2 px-3">
+                              <div className="flex items-center space-x-1.5 leading-tight">
+                                <span className="font-bold text-xs text-[#0F172A]">{gap.entityCode}</span>
+                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                  {gap.sectorCode || 'OTHER'}
                                 </span>
+                                {isSectorDisabled && (
+                                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    {lockedSector} only
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-[#64748B] truncate max-w-[200px] leading-tight mt-0.5">{gap.entityName}</div>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="font-extrabold text-xs text-[#16A34A] font-mono">
+                                {gap.headlineSlaPct}%
+                              </span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className={`font-extrabold text-xs font-mono ${gap.evidenceQualityScore < 50 ? 'text-[#DC2626]' : 'text-[#334155]'}`}>
+                                {gap.evidenceQualityScore}%
+                              </span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <div className="flex items-center space-x-1.5">
+                                <span className={`text-xs font-black font-mono ${gap.executionGapSize > 40 ? 'text-[#DC2626]' : 'text-[#334155]'}`}>
+                                  +{gap.executionGapSize}%
+                                </span>
+                                {gap.executionGapSize > 40 && (
+                                  <span className="text-[9px] bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] px-1.5 py-0.2 rounded font-bold">
+                                    SEVERE
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-3 text-[#334155] font-mono text-xs">
+                              <span className={gap.fastClosePct > 30 ? 'text-[#DC2626] font-bold' : ''}>
+                                {gap.fastClosePct}%
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-[#334155] font-mono text-xs">
+                              <span className={gap.unescalatedCriticalPct > 40 ? 'text-[#DC2626] font-bold' : ''}>
+                                {gap.unescalatedCriticalPct}%
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {isCompareMode ? (
+                                <button
+                                  onClick={() => handleToggleCompareEntity(gap.entityCode, gap.sectorCode || 'OTHER')}
+                                  disabled={isSectorDisabled}
+                                  className={`px-2.5 py-1 rounded text-[11px] font-bold border transition ${
+                                    isSelected
+                                      ? 'bg-red-100 text-red-800 border-red-300'
+                                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed'
+                                  }`}
+                                >
+                                  {isSelected ? 'Selected' : 'Select'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setSelectedEntityGap(gap)}
+                                  className="bg-[#DCFCE7] hover:bg-[#bbf7d0] text-[#16A34A] border border-[#86EFAC] px-2.5 py-1 rounded-md text-[11px] font-bold transition shadow-xs hover:scale-105 active:scale-95"
+                                >
+                                  Inspect Evidence
+                                </button>
                               )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-[#334155] font-mono">
-                            <span className={gap.fastClosePct > 30 ? 'text-[#DC2626] font-bold' : ''}>
-                              {gap.fastClosePct}%
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-[#334155] font-mono">
-                            <span className={gap.unescalatedCriticalPct > 40 ? 'text-[#DC2626] font-bold' : ''}>
-                              {gap.unescalatedCriticalPct}%
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-right">
-                            <button
-                              onClick={() => setSelectedEntityGap(gap)}
-                              className="bg-[#DCFCE7] hover:bg-[#bbf7d0] text-[#16A34A] border border-[#86EFAC] px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95"
-                            >
-                              Inspect Evidence
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1231,18 +1662,95 @@ export function App() {
                     </div>
 
                     {/* Page Size Selector */}
+                    {/* Group By Selector */}
                     <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
-                      <span className="text-[11px] text-slate-500 font-medium">Show:</span>
-                      <select
-                        value={findingPageSize}
-                        onChange={(e) => { setFindingPageSize(Number(e.target.value)); setFindingCurrentPage(1); }}
-                        className="text-xs font-bold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
-                      >
-                        <option value={5}>5 / page</option>
-                        <option value={6}>6 / page</option>
-                        <option value={10}>10 / page</option>
-                        <option value={25}>25 / page</option>
-                      </select>
+                      <span className="text-[11px] text-slate-500 font-medium">Group by:</span>
+                      <div className="flex items-center bg-slate-200/60 p-0.5 rounded-lg text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => { setFindingGroupBy('entity'); setFindingCurrentPage(1); }}
+                          className={`px-2 py-0.5 rounded-md transition ${findingGroupBy === 'entity' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        >
+                          Entity (CSE)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setFindingGroupBy('dimension'); setFindingCurrentPage(1); }}
+                          className={`px-2 py-0.5 rounded-md transition ${findingGroupBy === 'dimension' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        >
+                          Dimension
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setFindingGroupBy('none'); setFindingCurrentPage(1); }}
+                          className={`px-2 py-0.5 rounded-md transition ${findingGroupBy === 'none' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        >
+                          Flat List
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* View mode toggle (Table vs Cards) when in Flat mode */}
+                    {findingGroupBy === 'none' && (
+                      <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                        <span className="text-[11px] text-slate-500 font-medium">View:</span>
+                        <div className="flex items-center bg-slate-200/60 p-0.5 rounded-lg text-xs font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setFindingFlatViewMode('table')}
+                            className={`px-2 py-0.5 rounded-md transition ${findingFlatViewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                          >
+                            Table
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFindingFlatViewMode('cards')}
+                            className={`px-2 py-0.5 rounded-md transition ${findingFlatViewMode === 'cards' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                          >
+                            Cards
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Page Size Selector (Available in all modes) */}
+                    <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                      <span className="text-[11px] text-slate-500 font-medium">Per page:</span>
+                      {findingGroupBy === 'none' && (
+                        <select
+                          value={findingPageSize}
+                          onChange={(e) => { setFindingPageSize(Number(e.target.value)); setFindingCurrentPage(1); }}
+                          className="text-xs font-bold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                        >
+                          <option value={5}>5 findings</option>
+                          <option value={10}>10 findings</option>
+                          <option value={20}>20 findings</option>
+                          <option value={50}>50 findings</option>
+                        </select>
+                      )}
+                      {findingGroupBy === 'entity' && (
+                        <select
+                          value={findingGroupPageSize}
+                          onChange={(e) => { setFindingGroupPageSize(Number(e.target.value)); setFindingCurrentPage(1); }}
+                          className="text-xs font-bold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                        >
+                          <option value={2}>2 entities</option>
+                          <option value={4}>4 entities</option>
+                          <option value={6}>6 entities</option>
+                          <option value={10}>10 entities</option>
+                        </select>
+                      )}
+                      {findingGroupBy === 'dimension' && (
+                        <select
+                          value={findingDimensionPageSize}
+                          onChange={(e) => { setFindingDimensionPageSize(Number(e.target.value)); setFindingCurrentPage(1); }}
+                          className="text-xs font-bold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                        >
+                          <option value={2}>2 dimensions</option>
+                          <option value={4}>4 dimensions</option>
+                          <option value={8}>8 dimensions</option>
+                        </select>
+                      )}
                     </div>
 
                     {/* Clear Filters Button if any active */}
@@ -1266,118 +1774,485 @@ export function App() {
                 </div>
 
                 {/* Status Counter */}
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-500 pt-1 border-t border-slate-100">
                   <span className="font-medium">
                     Showing <strong className="text-slate-800 font-bold">{filteredFindings.length}</strong> of <strong className="text-slate-800 font-bold">{findings.length}</strong> supervisory findings
+                    {findingGroupBy !== 'none' && (
+                      <span className="ml-1 text-slate-500">
+                        (grouped into <strong className="text-slate-800 font-bold">{findingGroupBy === 'entity' ? groupedFindingsByEntity.length : groupedFindingsByDimension.length}</strong> clusters)
+                      </span>
+                    )}
                   </span>
-                  {filteredFindings.length > 0 && (
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      Page {findingCurrentPage} of {totalFindingPages}
-                    </span>
-                  )}
+                  <span className="text-[11px] text-slate-600 font-mono font-medium">
+                    Page <strong className="text-slate-900 font-bold">{activeFindingCurrentPage}</strong> of <strong className="text-slate-900 font-bold">{activeFindingTotalPages}</strong>
+                  </span>
                 </div>
               </div>
 
-              {/* Paginated Findings Grid */}
-              {paginatedFindings.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3.5">
-                  {paginatedFindings.map(f => (
-                    <div 
-                      key={f.id}
-                      onClick={() => handleOpenFindingDetail(f.id)}
-                      className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-start justify-between group hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <div className="space-y-1.5 flex-1 pr-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs font-mono font-bold bg-[#0F172A] text-[#4ADE80] px-2.5 py-0.5 rounded-md shadow-xs">
-                            {f.rule_key}
-                          </span>
-                          <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
-                            {f.entity_code}
-                          </span>
-                          <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
-                            {f.dimension_code}
-                          </span>
-                        </div>
-                        <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-red-700 transition-colors">
-                          {f.title}
-                        </h3>
-                        <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
-                      </div>
+              {/* Grouped by Entity View */}
+              {findingGroupBy === 'entity' && (
+                <div className="space-y-4">
+                  {paginatedGroupedFindingsByEntity.length > 0 ? (
+                    paginatedGroupedFindingsByEntity.map(grp => {
+                      const isExpanded = expandedGroupFindings[grp.entityCode];
+                      const findingsToShow = isExpanded ? grp.findings : grp.findings.slice(0, 5);
+                      const hasMore = grp.findings.length > 5;
 
-                      <div className="flex items-center space-x-3.5 shrink-0">
-                        <div className="text-right">
-                          <div className="text-xs text-[#64748B] font-medium">Severity</div>
-                          <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
-                            {f.severity_score} / 100
+                      return (
+                        <div key={grp.entityCode} className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-hidden transition hover:border-slate-300">
+                          {/* Entity Group Header Banner */}
+                          <div 
+                            onClick={() => toggleGroupCollapse(grp.entityCode)}
+                            className="bg-slate-50/90 hover:bg-slate-100/90 px-5 py-3.5 border-b border-[#E2E8F0] flex items-center justify-between cursor-pointer transition select-none"
+                          >
+                            <div className="flex items-center space-x-3 min-w-0">
+                              <div className="w-8 h-8 rounded-xl bg-[#0F172A] text-white flex items-center justify-center font-mono font-bold text-xs shrink-0 shadow-xs">
+                                <Building2 className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-extrabold text-sm text-[#0F172A] font-mono tracking-tight">
+                                    {grp.entityCode}
+                                  </span>
+                                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/60">
+                                    {grp.sector}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                                  {grp.entityName}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3 shrink-0">
+                              <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200/60 flex items-center space-x-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                                <span>{grp.findings.length} {grp.findings.length === 1 ? 'Finding' : 'Findings'}</span>
+                              </span>
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${collapsedGroups[grp.entityCode] ? '-rotate-90' : ''}`} />
+                            </div>
                           </div>
+
+                          {/* Findings Cards Inside Entity Group */}
+                          {!collapsedGroups[grp.entityCode] && (
+                            <div className="p-4 space-y-3 bg-slate-50/30">
+                              {findingsToShow.map(f => (
+                                <div 
+                                  key={f.id}
+                                  onClick={() => setInspectingFinding(f)}
+                                  className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:-translate-y-0.5 hover:shadow-md"
+                                >
+                                  <div className="space-y-1.5 flex-1 pr-2">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs font-mono font-bold bg-[#0F172A] text-white px-2.5 py-0.5 rounded-md shadow-xs">
+                                        {f.rule_key}
+                                      </span>
+                                      <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
+                                        {f.entity_code}
+                                      </span>
+                                      <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
+                                        {f.dimension_code}
+                                      </span>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-red-700 transition-colors">
+                                      {f.title}
+                                    </h3>
+                                    <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
+                                  </div>
+
+                                  <div className="flex items-center space-x-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                    <div className="text-right">
+                                      <div className="text-xs text-[#64748B] font-medium">Severity</div>
+                                      <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
+                                        {f.severity_score} / 100
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInspectingFinding(f);
+                                      }}
+                                      className="flex items-center space-x-1.5 text-xs font-bold bg-[#0F172A] hover:bg-red-700 text-white px-3.5 py-2 rounded-xl shadow-xs transition"
+                                    >
+                                      <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                                      <span>Inspect Reference Logs</span>
+                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Show More / Show Less Toggle Button */}
+                              {hasMore && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedGroupFindings(prev => ({ ...prev, [grp.entityCode]: !prev[grp.entityCode] }))}
+                                  className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition flex items-center justify-center space-x-1.5 shadow-2xs"
+                                >
+                                  <span>{isExpanded ? 'Show less (first 5 findings)' : `View all ${grp.findings.length} findings (+${grp.findings.length - 5} more)`}</span>
+                                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <ChevronRight className="w-5 h-5 text-[#94A3B8] group-hover:text-slate-700 group-hover:translate-x-1 transition-all" />
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-12 text-center shadow-xs">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <h3 className="text-sm font-bold text-slate-700">No findings match your filter criteria</h3>
+                      <p className="text-xs text-slate-500 mt-1">Try adjusting the search keyword or resetting filters.</p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                /* Empty state when no findings match search/filter */
-                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-12 text-center shadow-xs">
-                  <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <h3 className="text-sm font-bold text-slate-700">No findings match your filter criteria</h3>
-                  <p className="text-xs text-slate-500 mt-1">Try adjusting the search keyword or resetting filters.</p>
-                  <button
-                    onClick={() => {
-                      setFindingSearchQuery('');
-                      setFindingEntityFilter('ALL');
-                      setFindingDimensionFilter('ALL');
-                      setFindingSeverityFilter('ALL');
-                      setFindingCurrentPage(1);
-                    }}
-                    className="mt-3 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#111827] text-white hover:bg-black transition shadow-xs"
-                  >
-                    Reset All Filters
-                  </button>
+                  )}
                 </div>
               )}
 
-              {/* Pagination Controls Bar */}
-              {totalFindingPages > 1 && (
+              {/* Grouped by Dimension View */}
+              {findingGroupBy === 'dimension' && (
+                <div className="space-y-4">
+                  {paginatedGroupedFindingsByDimension.length > 0 ? (
+                    paginatedGroupedFindingsByDimension.map(grp => {
+                      const isExpanded = expandedGroupFindings[grp.dimensionCode];
+                      const findingsToShow = isExpanded ? grp.findings : grp.findings.slice(0, 5);
+                      const hasMore = grp.findings.length > 5;
+
+                      return (
+                        <div key={grp.dimensionCode} className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-hidden transition hover:border-slate-300">
+                          {/* Dimension Header Banner */}
+                          <div 
+                            onClick={() => toggleGroupCollapse(grp.dimensionCode)}
+                            className="bg-slate-50/90 hover:bg-slate-100/90 px-5 py-3.5 border-b border-[#E2E8F0] flex items-center justify-between cursor-pointer transition select-none"
+                          >
+                            <div className="flex items-center space-x-3 min-w-0">
+                              <div className="w-8 h-8 rounded-xl bg-blue-900 text-white flex items-center justify-center font-mono font-bold text-xs shrink-0 shadow-xs">
+                                <Layers className="w-4 h-4 text-blue-300" />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-sm text-[#0F172A] font-mono tracking-tight">
+                                  {grp.dimensionCode}
+                                </span>
+                                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                                  NCIIPC Core Operational Capability Dimension
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3 shrink-0">
+                              <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 flex items-center space-x-1.5">
+                                <FileText className="w-3.5 h-3.5 text-blue-500" />
+                                <span>{grp.findings.length} {grp.findings.length === 1 ? 'Finding' : 'Findings'}</span>
+                              </span>
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${collapsedGroups[grp.dimensionCode] ? '-rotate-90' : ''}`} />
+                            </div>
+                          </div>
+
+                          {/* Findings Cards Inside Dimension Group */}
+                          {!collapsedGroups[grp.dimensionCode] && (
+                            <div className="p-4 space-y-3 bg-slate-50/30">
+                              {findingsToShow.map(f => (
+                                <div 
+                                  key={f.id}
+                                  onClick={() => setInspectingFinding(f)}
+                                  className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:-translate-y-0.5 hover:shadow-md"
+                                >
+                                  <div className="space-y-1.5 flex-1 pr-2">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs font-mono font-bold bg-[#0F172A] text-white px-2.5 py-0.5 rounded-md shadow-xs">
+                                        {f.rule_key}
+                                      </span>
+                                      <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
+                                        {f.entity_code}
+                                      </span>
+                                      <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
+                                        {f.dimension_code}
+                                      </span>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-red-700 transition-colors">
+                                      {f.title}
+                                    </h3>
+                                    <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
+                                  </div>
+
+                                  <div className="flex items-center space-x-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                    <div className="text-right">
+                                      <div className="text-xs text-[#64748B] font-medium">Severity</div>
+                                      <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
+                                        {f.severity_score} / 100
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInspectingFinding(f);
+                                      }}
+                                      className="flex items-center space-x-1.5 text-xs font-bold bg-[#0F172A] hover:bg-red-700 text-white px-3.5 py-2 rounded-xl shadow-xs transition"
+                                    >
+                                      <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                                      <span>Inspect Reference Logs</span>
+                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Show More / Show Less Toggle Button */}
+                              {hasMore && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedGroupFindings(prev => ({ ...prev, [grp.dimensionCode]: !prev[grp.dimensionCode] }))}
+                                  className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition flex items-center justify-center space-x-1.5 shadow-2xs"
+                                >
+                                  <span>{isExpanded ? 'Show less (first 5 findings)' : `View all ${grp.findings.length} findings (+${grp.findings.length - 5} more)`}</span>
+                                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-12 text-center shadow-xs">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <h3 className="text-sm font-bold text-slate-700">No findings match your filter criteria</h3>
+                      <p className="text-xs text-slate-500 mt-1">Try adjusting the search keyword or resetting filters.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Flat Paginated Findings View (Table or Cards) */}
+              {findingGroupBy === 'none' && (
+                <>
+                  {paginatedFindings.length > 0 ? (
+                    findingFlatViewMode === 'table' ? (
+                      /* Flat Table View */
+                      <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-xs">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-[#F8FAFC] text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0] font-semibold">
+                              <tr>
+                                <th className="py-3 px-4">Rule Key</th>
+                                <th className="py-3 px-4">Entity</th>
+                                <th className="py-3 px-4">Dimension</th>
+                                <th className="py-3 px-4">Title & Context</th>
+                                <th className="py-3 px-4 text-center">Severity</th>
+                                <th className="py-3 px-4 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {paginatedFindings.map(f => (
+                                <tr
+                                  key={f.id}
+                                  onClick={() => setInspectingFinding(f)}
+                                  className="hover:bg-slate-50/80 cursor-pointer transition"
+                                >
+                                  <td className="py-3 px-4 font-mono font-bold whitespace-nowrap">
+                                    <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded text-[11px] shadow-2xs font-mono font-bold">
+                                      {f.rule_key}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className="font-bold text-slate-900">{f.entity_code}</span>
+                                    <span className="text-[11px] text-slate-400 block truncate max-w-[130px]">{f.entity_name}</span>
+                                  </td>
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                                      {f.dimension_code}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 max-w-md">
+                                    <div className="font-bold text-slate-900 truncate hover:text-red-700 transition">{f.title}</div>
+                                    <div className="text-[11px] text-slate-500 line-clamp-1">{f.rationale}</div>
+                                  </td>
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-extrabold ${f.severity_score >= 80 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                      {f.severity_score} / 100
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInspectingFinding(f);
+                                      }}
+                                      className="inline-flex items-center space-x-1 text-xs font-bold text-slate-700 hover:text-white bg-slate-100 hover:bg-[#0F172A] px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                                    >
+                                      <Terminal className="w-3 h-3 text-slate-500" />
+                                      <span>Inspect Logs</span>
+                                      <ChevronRight className="w-3 h-3 text-slate-400" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Flat Cards View */
+                      <div className="grid grid-cols-1 gap-3.5">
+                        {paginatedFindings.map(f => (
+                          <div 
+                            key={f.id}
+                            onClick={() => setInspectingFinding(f)}
+                            className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="space-y-1.5 flex-1 pr-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs font-mono font-bold bg-[#0F172A] text-white px-2.5 py-0.5 rounded-md shadow-xs">
+                                  {f.rule_key}
+                                </span>
+                                <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
+                                  {f.entity_code}
+                                </span>
+                                <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
+                                  {f.dimension_code}
+                                </span>
+                              </div>
+                              <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-red-700 transition-colors">
+                                {f.title}
+                              </h3>
+                              <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
+                            </div>
+
+                            <div className="flex items-center space-x-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                              <div className="text-right">
+                                <div className="text-xs text-[#64748B] font-medium">Severity</div>
+                                <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
+                                  {f.severity_score} / 100
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingFinding(f);
+                                }}
+                                className="flex items-center space-x-1.5 text-xs font-bold bg-[#0F172A] hover:bg-red-700 text-white px-3.5 py-2 rounded-xl shadow-xs transition"
+                              >
+                                <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                                <span>Inspect Reference Logs</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-12 text-center shadow-xs">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <h3 className="text-sm font-bold text-slate-700">No findings match your filter criteria</h3>
+                      <p className="text-xs text-slate-500 mt-1">Try adjusting the search keyword or resetting filters.</p>
+                      <button
+                        onClick={() => {
+                          setFindingSearchQuery('');
+                          setFindingEntityFilter('ALL');
+                          setFindingDimensionFilter('ALL');
+                          setFindingSeverityFilter('ALL');
+                          setFindingCurrentPage(1);
+                        }}
+                        className="mt-3 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#111827] text-white hover:bg-black transition shadow-xs"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Unified Pagination Controls Bar for all modes */}
+              {activeFindingTotalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-[#E2E8F0] px-5 py-3.5 rounded-2xl shadow-xs">
                   <span className="text-xs text-slate-600 font-medium">
-                    Showing <strong className="text-slate-900 font-bold">{(findingCurrentPage - 1) * findingPageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(findingCurrentPage * findingPageSize, filteredFindings.length)}</strong> of <strong className="text-slate-900 font-bold">{filteredFindings.length}</strong> findings
+                    {findingGroupBy === 'entity' && (
+                      <>
+                        Showing <strong className="text-slate-900 font-bold">{(activeFindingCurrentPage - 1) * findingGroupPageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(activeFindingCurrentPage * findingGroupPageSize, groupedFindingsByEntity.length)}</strong> of <strong className="text-slate-900 font-bold">{groupedFindingsByEntity.length}</strong> entity clusters
+                      </>
+                    )}
+                    {findingGroupBy === 'dimension' && (
+                      <>
+                        Showing <strong className="text-slate-900 font-bold">{(activeFindingCurrentPage - 1) * findingDimensionPageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(activeFindingCurrentPage * findingDimensionPageSize, groupedFindingsByDimension.length)}</strong> of <strong className="text-slate-900 font-bold">{groupedFindingsByDimension.length}</strong> dimension clusters
+                      </>
+                    )}
+                    {findingGroupBy === 'none' && (
+                      <>
+                        Showing <strong className="text-slate-900 font-bold">{(activeFindingCurrentPage - 1) * findingPageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(activeFindingCurrentPage * findingPageSize, filteredFindings.length)}</strong> of <strong className="text-slate-900 font-bold">{filteredFindings.length}</strong> findings
+                      </>
+                    )}
                   </span>
 
                   <div className="flex items-center space-x-1.5">
                     <button
+                      type="button"
+                      onClick={() => setFindingCurrentPage(1)}
+                      disabled={activeFindingCurrentPage === 1}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-30 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                      title="First Page"
+                    >
+                      First
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => setFindingCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={findingCurrentPage === 1}
-                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                      disabled={activeFindingCurrentPage === 1}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-30 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Previous</span>
                     </button>
 
                     <div className="flex items-center space-x-1">
-                      {Array.from({ length: totalFindingPages }, (_, i) => i + 1).map(pageNum => (
-                        <button
-                          key={pageNum}
-                          onClick={() => setFindingCurrentPage(pageNum)}
-                          className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center ${
-                            findingCurrentPage === pageNum
-                              ? 'bg-[#111827] text-white shadow-xs'
-                              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
+                      {getPageNumbers(activeFindingCurrentPage, activeFindingTotalPages).map((pageNum, idx) => {
+                        if (pageNum === '...') {
+                          return (
+                            <span key={`ell-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs text-slate-400">
+                              ...
+                            </span>
+                          );
+                        }
+                        const num = Number(pageNum);
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setFindingCurrentPage(num)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center ${
+                              activeFindingCurrentPage === num
+                                ? 'bg-[#111827] text-white shadow-xs'
+                                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <button
-                      onClick={() => setFindingCurrentPage(p => Math.min(totalFindingPages, p + 1))}
-                      disabled={findingCurrentPage === totalFindingPages}
-                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                      type="button"
+                      onClick={() => setFindingCurrentPage(p => Math.min(activeFindingTotalPages, p + 1))}
+                      disabled={activeFindingCurrentPage === activeFindingTotalPages}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-30 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
                     >
                       <span>Next</span>
                       <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFindingCurrentPage(activeFindingTotalPages)}
+                      disabled={activeFindingCurrentPage === activeFindingTotalPages}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-30 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                      title="Last Page"
+                    >
+                      Last
                     </button>
                   </div>
                 </div>
@@ -1387,18 +2262,119 @@ export function App() {
 
           {/* ================= TAB 4: NEGATIVE SPACE MATRIX ================= */}
           {activeTab === 'negative' && (
-            <div className="space-y-6">
-              <div className="bg-[#EDE9FE] border border-[#DDD6FE] p-5 rounded-2xl text-xs text-[#5B21B6] shadow-sm">
-                <strong className="text-sm font-bold text-[#4C1D95] block mb-1">
-                  Negative Space Reasoning (Detecting What is Absent)
-                </strong>
-                Traditional SIEMs only alarm on incoming alerts. Supervisory assessment actively searches for <strong>missing expected evidence</strong>: silent SCADA systems, unmonitored critical networks, and missing threat categories compared to sectoral peers.
+            <div className="space-y-5">
+              {/* 4 Summary Metric Cards (Executive & Compact) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {/* Card 1: Silent Critical Assets */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-purple-50/90 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                      <EyeOff className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Silent Critical Assets
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-slate-900 font-mono">
+                          {negativeSpaceStats.totalSilent} Systems
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Zero telemetry &gt;10d
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60 shrink-0 ml-2">
+                    {negativeSpaceStats.totalSilent} Blindspots
+                  </span>
+                </div>
+
+                {/* Card 2: Maximum Silence Window */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-red-50/90 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Max Silence Window
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-red-600 font-mono">
+                          {negativeSpaceStats.maxDays} Days
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Avg: {negativeSpaceStats.avgDays}d inactive
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200/60 shrink-0 ml-2">
+                    Audit Defect
+                  </span>
+                </div>
+
+                {/* Card 3: Tier 5 Critical Assets */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Tier-5 SCADA Blindspots
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-amber-600 font-mono">
+                          {negativeSpaceStats.tier5Count} Critical
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Out of {negativeSpaceStats.totalSilent} silent
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 shrink-0 ml-2">
+                    Tier 5
+                  </span>
+                </div>
+
+                {/* Card 4: Negative Space Defects */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50/90 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Negative Space Findings
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-slate-900 font-mono">
+                          {negativeSpaceStats.nsFindingsCount} Findings
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Across {negativeSpaceStats.entitiesAffected} CSE entity
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-200/60 shrink-0 ml-2">
+                    NS-01 to NS-05
+                  </span>
+                </div>
               </div>
 
               <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
-                <div className="px-6 py-4 border-b border-[#E2E8F0] bg-slate-50/50">
-                  <h3 className="text-base font-bold text-[#0F172A]">Silent Critical Infrastructure Assets (&gt;10 Days Silence)</h3>
-                  <p className="text-xs text-[#64748B]">High-criticality assets generating zero alerts or security telemetry</p>
+                <div className="px-6 py-4 border-b border-[#E2E8F0] bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-[#0F172A]">Silent Critical Infrastructure Assets (&gt;10 Days Silence)</h3>
+                    <p className="text-xs text-[#64748B]">High-criticality assets generating zero alerts or security telemetry</p>
+                  </div>
+                  <span className="text-xs font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200/60 px-3 py-1 rounded-full self-start sm:self-auto">
+                    {silentAssets.length} Inactive Assets Detected
+                  </span>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1448,61 +2424,213 @@ export function App() {
           {/* ================= TAB 5: SUPERVISORY REVIEW QUEUE ================= */}
           {activeTab === 'queue' && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-bold text-[#0F172A]">Prioritized Supervisory Review Queue ({reviewSamples.length} Records)</h2>
-                <p className="text-xs text-[#64748B]">Knapsack-budgeted sample portfolio balancing targeted high-risk records (85%) with exploration quotas (15%)</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-[#0F172A]">
+                    Prioritized Supervisory Review Queue ({filteredReviewSamples.length} Records)
+                  </h2>
+                  <p className="text-xs text-[#64748B]">
+                    Knapsack-budgeted sample portfolio balancing targeted high-risk records (85%) with exploration quotas (15%) • Showing up to 15 records per page
+                  </p>
+                </div>
+                {totalQueuePages > 1 && (
+                  <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 self-start sm:self-auto">
+                    Page {safeQueuePage} of {totalQueuePages}
+                  </span>
+                )}
               </div>
 
-              <div className="space-y-3">
-                {reviewSamples.map(smp => (
-                  <div key={smp.id} className="bg-white border border-[#E2E8F0] p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-center justify-between">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center space-x-2.5">
-                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase ${
-                          smp.strategy === 'priority' 
-                            ? 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5]' 
-                            : 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC]'
-                        }`}>
-                          {smp.strategy === 'priority' ? 'Priority Target' : 'Exploration Quota'}
-                        </span>
-                        <span className="text-xs font-bold text-[#0F172A]">{smp.entity_code}</span>
-                        <span className="text-xs text-[#64748B] font-mono">{smp.record_id}</span>
-                      </div>
-                      <div className="text-xs text-[#334155]">
-                        <strong>Reasons Flagged:</strong> {smp.reasons?.join(', ')}
-                      </div>
-                      {smp.reviewed && (
-                        <div className="text-xs text-[#16A34A] font-medium">
-                          ✓ Decision: <strong>{smp.examiner_decision}</strong> — "{smp.examiner_comment}"
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      {!smp.reviewed ? (
-                        <>
-                          <button 
-                            onClick={() => handleRecordDecision(smp.id, 'confirmed')}
-                            className="text-xs bg-[#DC2626] hover:bg-[#b91c1c] text-white font-bold px-3.5 py-2 rounded-lg transition shadow-sm"
-                          >
-                            Confirm Gap
-                          </button>
-                          <button 
-                            onClick={() => handleRecordDecision(smp.id, 'benign')}
-                            className="text-xs bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] border border-[#CBD5E1] px-3.5 py-2 rounded-lg font-bold transition"
-                          >
-                            Mark Benign
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-xs bg-[#F1F5F9] text-[#64748B] border border-[#CBD5E1] px-3 py-1 rounded-md font-medium">
-                          Reviewed
-                        </span>
-                      )}
-                    </div>
+              {/* Filter & Search Bar */}
+              <div className="bg-white border border-[#E2E8F0] p-4 rounded-2xl shadow-xs space-y-3">
+                <div className="flex flex-col md:flex-row gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text"
+                      value={queueSearchQuery}
+                      onChange={(e) => { setQueueSearchQuery(e.target.value); setQueueCurrentPage(1); }}
+                      placeholder="Search by entity (e.g. CSE-TELCO-01), record ID, or reason..."
+                      className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                    />
+                    {queueSearchQuery && (
+                      <button 
+                        onClick={() => { setQueueSearchQuery(''); setQueueCurrentPage(1); }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                ))}
+
+                  {/* Filter Selects */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                      <Filter className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[11px] font-bold text-slate-500 uppercase">Strategy:</span>
+                      <select
+                        value={queueStrategyFilter}
+                        onChange={(e) => { setQueueStrategyFilter(e.target.value); setQueueCurrentPage(1); }}
+                        className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">All Strategies</option>
+                        <option value="priority">Priority Target (85%)</option>
+                        <option value="exploration">Exploration Quota (15%)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[11px] font-bold text-slate-500 uppercase">Status:</span>
+                      <select
+                        value={queueStatusFilter}
+                        onChange={(e) => { setQueueStatusFilter(e.target.value); setQueueCurrentPage(1); }}
+                        className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">All Records</option>
+                        <option value="PENDING">Pending Review</option>
+                        <option value="REVIEWED">Reviewed</option>
+                      </select>
+                    </div>
+
+                    {(queueSearchQuery || queueStrategyFilter !== 'ALL' || queueStatusFilter !== 'ALL') && (
+                      <button
+                        onClick={() => {
+                          setQueueSearchQuery('');
+                          setQueueStrategyFilter('ALL');
+                          setQueueStatusFilter('ALL');
+                          setQueueCurrentPage(1);
+                        }}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+                        title="Reset Filters"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              {/* Records List (15 per page) */}
+              <div className="space-y-3">
+                {paginatedReviewSamples.length === 0 ? (
+                  <div className="bg-white border border-[#E2E8F0] p-10 rounded-2xl text-center space-y-2">
+                    <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-sm font-bold text-slate-700">No review records matched the selected criteria.</p>
+                    <p className="text-xs text-slate-500">Try clearing your search query or dropdown filters to view items in the queue.</p>
+                  </div>
+                ) : (
+                  paginatedReviewSamples.map(smp => (
+                    <div key={smp.id} className="bg-white border border-[#E2E8F0] hover:border-slate-300 p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase ${
+                            smp.strategy === 'priority' 
+                              ? 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5]' 
+                              : 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC]'
+                          }`}>
+                            {smp.strategy === 'priority' ? 'Priority Target' : 'Exploration Quota'}
+                          </span>
+                          <span className="text-xs font-bold text-[#0F172A]">{smp.entity_code}</span>
+                          <span className="text-xs text-[#64748B] font-mono">{smp.record_id}</span>
+                        </div>
+                        <div className="text-xs text-[#334155] leading-relaxed">
+                          <strong>Reasons Flagged:</strong> {smp.reasons?.join(', ')}
+                        </div>
+                        {smp.reviewed && (
+                          <div className="text-xs text-[#16A34A] font-medium flex items-center gap-1.5 pt-0.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Decision: <strong>{smp.examiner_decision}</strong> — "{smp.examiner_comment}"</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                        {!smp.reviewed ? (
+                          <>
+                            <button 
+                              onClick={() => handleRecordDecision(smp.id, 'confirmed')}
+                              className="text-xs bg-[#DC2626] hover:bg-[#b91c1c] text-white font-bold px-3.5 py-2 rounded-lg transition shadow-sm cursor-pointer"
+                            >
+                              Confirm Gap
+                            </button>
+                            <button 
+                              onClick={() => handleRecordDecision(smp.id, 'benign')}
+                              className="text-xs bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] border border-[#CBD5E1] px-3.5 py-2 rounded-lg font-bold transition cursor-pointer"
+                            >
+                              Mark Benign
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs bg-[#F1F5F9] text-[#64748B] border border-[#CBD5E1] px-3 py-1 rounded-md font-medium">
+                            Reviewed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Pagination Controls Bar */}
+              {totalQueuePages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-[#E2E8F0] px-5 py-3.5 rounded-2xl shadow-xs">
+                  <span className="text-xs text-slate-600 font-medium">
+                    Showing <strong className="text-slate-900 font-bold">{(safeQueuePage - 1) * queuePageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(safeQueuePage * queuePageSize, filteredReviewSamples.length)}</strong> of <strong className="text-slate-900 font-bold">{filteredReviewSamples.length}</strong> records (15 per page)
+                  </span>
+
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => setQueueCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={safeQueuePage === 1}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalQueuePages }, (_, i) => i + 1)
+                        .filter(pageNum => {
+                          if (totalQueuePages <= 7) return true;
+                          if (pageNum === 1 || pageNum === totalQueuePages) return true;
+                          return Math.abs(pageNum - safeQueuePage) <= 1;
+                        })
+                        .map((pageNum, idx, arr) => {
+                          const prev = arr[idx - 1];
+                          const showEllipsis = prev && pageNum - prev > 1;
+                          return (
+                            <React.Fragment key={pageNum}>
+                              {showEllipsis && (
+                                <span className="text-slate-400 text-xs px-1 font-mono">...</span>
+                              )}
+                              <button
+                                onClick={() => setQueueCurrentPage(pageNum)}
+                                className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                                  safeQueuePage === pageNum
+                                    ? 'bg-[#111827] text-white shadow-xs'
+                                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      onClick={() => setQueueCurrentPage(p => Math.min(totalQueuePages, p + 1))}
+                      disabled={safeQueuePage === totalQueuePages}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200 cursor-pointer"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1597,7 +2725,7 @@ export function App() {
                       Zero Cloud API Calls • Zero Hallucination Risk • Zero GPU Requirements • 100% Offline Verifiability
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold bg-[#111827] text-[#4ADE80] px-3 py-1 rounded-lg border border-slate-700 shadow-xs">
+                  <span className="text-xs font-mono font-bold bg-[#111827] text-white px-3 py-1 rounded-lg border border-slate-700 shadow-xs">
                     O(1) / O(N) Compute Guarantees
                   </span>
                 </div>
@@ -1732,8 +2860,27 @@ export function App() {
               </div>
             </div>
           )}
+
+          {/* ================= TAB 9: PEER COHORT FORENSIC COMPARISON ================= */}
+          {activeTab === 'compare' && (
+            <PeerComparisonView
+              initialEntityCodes={selectedCompareEntities.length >= 2 ? selectedCompareEntities : undefined}
+              allKpiGaps={kpiGaps}
+              allEntities={entities}
+              onBack={() => navigate('/dashboard/kpis-vs-evidence')}
+            />
+          )}
         </main>
       </div>
+      )}
+
+      {/* ================= MODAL: FINDING EVIDENCE DOSSIER & LOGS (SAME AS INJECT-LOGS SCREEN) ================= */}
+      {inspectingFinding && (
+        <FindingEvidenceModal
+          finding={inspectingFinding}
+          entityCode={inspectingFinding.entity_code || 'CSE-POWER-01'}
+          onClose={() => setInspectingFinding(null)}
+        />
       )}
 
       {/* ================= MODAL: FINDING DETAIL WITH "WHY FLAGGED" ================= */}
@@ -1968,7 +3115,7 @@ export function App() {
                         <div>
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex items-center space-x-1.5 flex-wrap">
-                              <span className="text-[10px] font-mono font-bold bg-[#111827] text-[#4ADE80] px-2 py-0.5 rounded">
+                              <span className="text-[10px] font-mono font-bold bg-[#111827] text-white px-2 py-0.5 rounded">
                                 {finding.rule_key}
                               </span>
                               <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
