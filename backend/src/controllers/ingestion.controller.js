@@ -495,7 +495,7 @@ export async function loadSampleSuite(req, res) {
   const casesFile = path.join(samplesDir, 'cases.csv');
   const alertsFile = path.join(samplesDir, 'alerts.csv');
 
-  // If clear requested, purge tables
+  // If clear requested, purge operational telemetry and analytical tables (preserving base entities)
   if (clearExisting) {
     await db('finding_evidence').del();
     await db('findings').del();
@@ -506,7 +506,7 @@ export async function loadSampleSuite(req, res) {
     await db('alerts').del();
     await db('cases').del();
     await db('assets').del();
-    await db('entities').del();
+    await db('import_batches').del();
     await db('analysis_runs').del();
   }
 
@@ -519,20 +519,21 @@ export async function loadSampleSuite(req, res) {
 
   const sectorId = isTelco ? 'sec_telecom' : (isPower ? 'sec_energy' : (isBank ? 'sec_bfsi' : (isHealth ? 'sec_health' : 'sec_defense')));
   const sectorCode = isTelco ? 'TELECOM' : (isPower ? 'ENERGY' : (isBank ? 'BFSI' : (isHealth ? 'HEALTH' : 'DEFENSE')));
-  const sectorName = isTelco ? 'Telecommunications & Satcom' : (isPower ? 'Power Grid & Energy' : (isBank ? 'Banking & Financial' : (isHealth ? 'Critical Healthcare' : 'Defense & Aerospace')));
+  const sectorName = isTelco ? 'Telecommunications & Satcom' : (isPower ? 'Power Grid & Energy' : (isBank ? 'Banking & Financial' : (isHealth ? 'Critical Healthcare' : 'Defense & Strategic Enclaves')));
 
   const existingSec = await db('sectors').where('id', sectorId).first();
   if (!existingSec) {
     await db('sectors').insert({ id: sectorId, code: sectorCode, name: sectorName });
   }
 
-  const entityId = `cse_${entityCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  const normalizedId = entityCode.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const entityId = normalizedId.startsWith('cse_') ? normalizedId : `cse_${normalizedId}`;
   const entityName = isTelco ? 'National Backbone Telecommunications & 5G' 
     : (isPower ? 'Northern Regional Power Grid Transmission' 
     : (isBank ? 'Apex National Commercial & Settlement Bank' 
-    : (isHealth ? 'National Telehealth & Health Registry Exchange' : 'Strategic Avionics Hub')));
+    : (isHealth ? 'National Telehealth & Health Registry Exchange' : 'Strategic Avionics & Defense Manufacturing Hub')));
 
-  let entity = await db('entities').where('id', entityId).first();
+  let entity = await db('entities').where('code', entityCode).orWhere('id', entityId).first();
   if (!entity) {
     await db('entities').insert({
       id: entityId,
@@ -577,25 +578,30 @@ export async function loadSampleSuite(req, res) {
   let casesInserted = 0;
   if (fs.existsSync(casesFile)) {
     const caseLines = fs.readFileSync(casesFile, 'utf-8').split(/\r?\n/).filter(l => l.trim().length > 0);
-    const maxCases = Math.min(caseLines.length, 5000);
+    const maxCases = Math.min(caseLines.length, 50000);
+    const caseBatch = [];
     for (let i = 1; i < maxCases; i++) {
-      const cols = caseLines[i].split(',');
+      const cols = caseLines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
       if (cols.length < 6) continue;
       const cId = cols[0].trim();
-      const existing = await db('cases').where('id', cId).first();
-      if (!existing) {
-        await db('cases').insert({
-          id: cId,
-          entity_id: entity.id,
-          external_id: cId,
-          opened_at: new Date(cols[4]?.trim() || Date.now()),
-          closed_at: cols[5]?.trim() ? new Date(cols[5].trim()) : null,
-          status: cols[3]?.trim() || 'CLOSED',
-          severity: cols[2]?.trim() || 'HIGH',
-          resolution: 'RESOLVED'
-        });
-        casesInserted++;
+      caseBatch.push({
+        id: cId,
+        entity_id: entity.id,
+        external_id: cId,
+        opened_at: new Date(cols[4]?.trim() || Date.now()),
+        closed_at: cols[5]?.trim() ? new Date(cols[5].trim()) : null,
+        status: cols[3]?.trim() || 'CLOSED',
+        severity: cols[2]?.trim() || 'HIGH',
+        resolution: 'RESOLVED'
+      });
+      casesInserted++;
+      if (caseBatch.length >= 250) {
+        await db('cases').insert(caseBatch);
+        caseBatch.length = 0;
       }
+    }
+    if (caseBatch.length > 0) {
+      await db('cases').insert(caseBatch);
     }
   }
 
@@ -606,34 +612,46 @@ export async function loadSampleSuite(req, res) {
     const fileStream = fs.createReadStream(alertsFile);
     const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
     let count = 0;
-    const maxAlerts = 20000; // Load 20k fast sample
+    const maxAlerts = 100000;
+    let alertBatch = [];
 
     for await (const line of rl) {
       if (count === 0 && line.startsWith('alert_id')) { count++; continue; }
       if (!line.trim()) continue;
-      const cols = line.split(',');
+      const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
       if (cols.length < 6) continue;
 
-      const alId = cols[0].trim();
-      const sev = cols[2]?.trim() || 'MEDIUM';
+      const alId = cols[0];
+      const sev = cols[2] || 'MEDIUM';
       severityBreakdown[sev] = (severityBreakdown[sev] || 0) + 1;
 
-      await db('alerts').insert({
+      const createdDate = cols[3] && !isNaN(new Date(cols[3]).getTime()) ? new Date(cols[3]) : new Date();
+      const closedDate = cols[4] && !isNaN(new Date(cols[4]).getTime()) ? new Date(cols[4]) : null;
+
+      alertBatch.push({
         id: alId,
         entity_id: entity.id,
         batch_id: `batch_${entityCode}`,
         external_id: alId,
-        asset_id: cols[7]?.trim() || null,
-        category: cols[1]?.trim() || 'Security Event',
+        asset_id: cols[7] || null,
+        category: cols[1] || 'Security Event',
         severity: sev,
-        created_at: new Date(cols[3]?.trim() || Date.now()),
-        closed_at: cols[4]?.trim() ? new Date(cols[4].trim()) : null,
-        disposition: cols[5]?.trim() || 'RESOLVED',
+        created_at: createdDate,
+        closed_at: closedDate,
+        disposition: cols[5] || 'RESOLVED',
         assignee_hash: crypto.createHash('sha256').update(cols[6] || 'anon').digest('hex').slice(0, 16)
       });
       alertsInserted++;
       count++;
+
+      if (alertBatch.length >= 250) {
+        await db('alerts').insert(alertBatch);
+        alertBatch = [];
+      }
       if (count >= maxAlerts) break;
+    }
+    if (alertBatch.length > 0) {
+      await db('alerts').insert(alertBatch);
     }
   }
 

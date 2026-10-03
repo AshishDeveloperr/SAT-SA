@@ -950,8 +950,14 @@ export function App() {
           {/* ================= TAB: INJECT TELEMETRY & LOGS ================= */}
           {activeTab === 'upload' && (
             <EvidenceIngestionEnclave 
+              entities={entities}
               onDataRefreshed={fetchAllData}
               onNavigateToDashboard={() => setActiveTab('dashboard')}
+              onSelectReportEntity={(ent) => {
+                setSelectedReportEntity(ent);
+                setIsReportModalOpen(true);
+              }}
+              onInspectGaps={() => setActiveTab('gap')}
             />
           )}
 

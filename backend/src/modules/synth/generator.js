@@ -92,7 +92,7 @@ export async function generateSyntheticData() {
 
   // Insert Entities
   for (const ent of entitiesConfig) {
-    const existing = await db('entities').where('id', ent.id).first();
+    const existing = await db('entities').where('id', ent.id).orWhere('code', ent.code).first();
     if (!existing) {
       await db('entities').insert({
         id: ent.id,
