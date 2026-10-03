@@ -20,10 +20,17 @@ export async function getEntities(req, res) {
 
   // Get latest score for each entity
   const scores = await db('entity_scores').orderBy('created_at', 'desc');
+  const alertCounts = await db('alerts').groupBy('entity_id').select('entity_id').count('id as alert_count');
+  const assetCounts = await db('assets').groupBy('entity_id').select('entity_id').count('id as asset_count');
 
   const result = entities.map(ent => {
     const latestScore = scores.find(s => s.entity_id === ent.id);
     const score = latestScore ? latestScore.composite_score : 0;
+    const alertRow = alertCounts.find(a => a.entity_id === ent.id);
+    const assetRow = assetCounts.find(a => a.entity_id === ent.id);
+    const alert_count = alertRow ? parseInt(alertRow.alert_count, 10) : 0;
+    const asset_count = assetRow ? parseInt(assetRow.asset_count, 10) : 0;
+
     let riskLevel = 'LOW';
     if (score >= 75) riskLevel = 'CRITICAL';
     else if (score >= 60) riskLevel = 'HIGH';
@@ -35,6 +42,8 @@ export async function getEntities(req, res) {
       riskLevel,
       rank: latestScore ? latestScore.rank : 99,
       percentile: latestScore ? latestScore.percentile : 50,
+      alert_count,
+      asset_count,
       dimension_scores: latestScore && latestScore.dimension_scores_json 
         ? JSON.parse(latestScore.dimension_scores_json) 
         : {},

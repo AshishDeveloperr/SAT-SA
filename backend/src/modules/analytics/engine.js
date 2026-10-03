@@ -32,12 +32,12 @@ export async function runSupervisoryAnalysis(trigger = 'manual') {
   const rules = await db('rules').where('enabled', true);
   const dimensions = await db('dimensions');
 
-  // Load all operational data into memory for multi-entity peer analytics
-  const allAlerts = await db('alerts');
-  const allCases = await db('cases');
-  const allSteps = await db('investigation_steps');
-  const allEscalations = await db('escalations');
-  const allAssets = await db('assets');
+  // Load all operational data into memory for multi-entity peer analytics (optimized column selection for 500k records)
+  const allAlerts = await db('alerts').select('id', 'entity_id', 'severity', 'created_at', 'closed_at', 'asset_id', 'category', 'disposition', 'external_id');
+  const allCases = await db('cases').select('id', 'entity_id', 'severity');
+  const allSteps = await db('investigation_steps').select('id', 'entity_id', 'alert_id', 'note_simhash');
+  const allEscalations = await db('escalations').select('id', 'entity_id', 'alert_id');
+  const allAssets = await db('assets').select('id', 'entity_id', 'external_id', 'name', 'criticality', 'last_seen');
 
   // Pre-calculate entity-level baselines
   const entityStats = {};
@@ -496,8 +496,15 @@ export async function runSupervisoryAnalysis(trigger = 'manual') {
 
     // --- GENERATE SUPERVISORY REVIEW QUEUE SAMPLES ---
     // 85% targeted priority samples from findings + 15% exploration quota
-    const priorityAlerts = stats.fastCritical.concat(stats.unescalatedCritical).slice(0, 8);
-    for (const alert of priorityAlerts) {
+    const seenAlertIds = new Set();
+    const priorityAlerts = [];
+    for (const alert of stats.fastCritical.concat(stats.unescalatedCritical)) {
+      if (!seenAlertIds.has(alert.id)) {
+        seenAlertIds.add(alert.id);
+        priorityAlerts.push(alert);
+      }
+    }
+    for (const alert of priorityAlerts.slice(0, 8)) {
       samplesToInsert.push({
         id: `smp_${runId}_${alert.id}`,
         run_id: runId,
@@ -512,7 +519,7 @@ export async function runSupervisoryAnalysis(trigger = 'manual') {
     }
 
     // Exploration quota (random benign/normal alert for unbiased examiner audit)
-    const explorationAlert = stats.entAlerts.find(a => a.severity === 'MEDIUM' || a.severity === 'LOW');
+    const explorationAlert = stats.entAlerts.find(a => (a.severity === 'MEDIUM' || a.severity === 'LOW') && !seenAlertIds.has(a.id));
     if (explorationAlert) {
       samplesToInsert.push({
         id: `smp_${runId}_${explorationAlert.id}_exp`,
@@ -531,7 +538,8 @@ export async function runSupervisoryAnalysis(trigger = 'manual') {
   // Insert all findings, evidence, scores, samples into database
   if (findingsToInsert.length > 0) await db('findings').insert(findingsToInsert);
   if (evidenceToInsert.length > 0) await db('finding_evidence').insert(evidenceToInsert);
-  if (samplesToInsert.length > 0) await db('review_samples').insert(samplesToInsert);
+  const uniqueSamples = Array.from(new Map(samplesToInsert.map(s => [s.id, s])).values());
+  if (uniqueSamples.length > 0) await db('review_samples').insert(uniqueSamples);
 
   // Assign rankings to scores
   scoresToInsert.sort((a, b) => b.composite_score - a.composite_score);

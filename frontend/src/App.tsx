@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Shield, AlertTriangle, Activity, EyeOff, Scale, CheckCircle2, 
   RefreshCw, Sliders, ArrowRight, Database, Lock, TrendingUp, Info, 
   ChevronRight, X, ArrowLeft, Home, Zap, Github, ArrowUpRight,
-  FileText, Calendar, Building2, Eye, ShieldAlert, ShieldCheck, Printer, Download
+  FileText, Calendar, Building2, Eye, ShieldAlert, ShieldCheck, Printer, Download,
+  Search, Filter, ChevronLeft, RotateCcw, UploadCloud
 } from 'lucide-react';
 import { HomePage } from './pages/home/HomePage';
 import { SupervisorySankeyFlow } from './components/SupervisorySankeyFlow';
 import { ScenarioStudioModal } from './components/ScenarioStudioModal';
 import { StatutoryReportModal } from './components/StatutoryReportModal';
-
+import { ResilienceDimensionPieChart } from './components/ResilienceDimensionPieChart';
+import { EvidenceIngestionEnclave } from './components/EvidenceIngestionEnclave';
 
 interface Entity {
   id: string;
@@ -78,11 +80,33 @@ export function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Route determines view: /dashboard is supervisory console, / (or others) is landing
-  const isDashboard = location.pathname === '/dashboard';
+  // Route determines view: /dashboard and its sub-routes activate supervisory console
+  const isDashboard = location.pathname.startsWith('/dashboard');
   const currentView = isDashboard ? 'console' : 'landing';
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit'>('dashboard');
+  // Compute activeTab dynamically from URL pathname
+  const activeTab = useMemo<'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit'>(() => {
+    const sub = location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase().trim();
+    if (sub === 'upload' || sub === 'inject' || sub === 'inject-logs' || sub === 'telemetry' || sub === 'ingest' || sub === 'intake' || sub === 'evidence-intake') return 'upload';
+    if (sub === 'gap' || sub === 'kpis' || sub === 'kpis-vs-evidence') return 'gap';
+    if (sub === 'findings') return 'findings';
+    if (sub === 'negative' || sub === 'negative-space') return 'negative';
+    if (sub === 'queue' || sub === 'review' || sub === 'review-queue') return 'queue';
+    if (sub === 'rules') return 'rules';
+    if (sub === 'validation' || sub === 'lab') return 'validation';
+    if (sub === 'audit') return 'audit';
+    return 'dashboard';
+  }, [location.pathname]);
+
+  // Navigate to specific sub-route
+  const setActiveTab = (tab: 'dashboard' | 'upload' | 'gap' | 'findings' | 'negative' | 'queue' | 'rules' | 'validation' | 'audit') => {
+    if (tab === 'dashboard') navigate('/dashboard');
+    else if (tab === 'upload') navigate('/dashboard/inject-logs');
+    else if (tab === 'gap') navigate('/dashboard/kpis-vs-evidence');
+    else if (tab === 'negative') navigate('/dashboard/negative-space');
+    else if (tab === 'queue') navigate('/dashboard/review-queue');
+    else navigate(`/dashboard/${tab}`);
+  };
   const [entities, setEntities] = useState<Entity[]>([]);
 
   const [kpiGaps, setKpiGaps] = useState<KpiGap[]>([]);
@@ -103,6 +127,85 @@ export function App() {
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [selectedReportEntity, setSelectedReportEntity] = useState<any>(null);
   const [sanctionSuccessMsg, setSanctionSuccessMsg] = useState<string | null>(null);
+
+  // Findings Explorer Filter & Pagination States
+  const [findingSearchQuery, setFindingSearchQuery] = useState<string>('');
+  const [findingEntityFilter, setFindingEntityFilter] = useState<string>('ALL');
+  const [findingDimensionFilter, setFindingDimensionFilter] = useState<string>('ALL');
+  const [findingSeverityFilter, setFindingSeverityFilter] = useState<string>('ALL');
+  const [findingCurrentPage, setFindingCurrentPage] = useState<number>(1);
+  const [findingPageSize, setFindingPageSize] = useState<number>(6);
+
+  // 4 Metric cards stats for Findings Explorer
+  const findingsStats = useMemo(() => {
+    const total = findings.length;
+    const critical = findings.filter(f => f.severity_score >= 80).length;
+    const entitiesAffected = new Set(findings.map(f => f.entity_code)).size;
+    const avgSeverity = total > 0 ? Math.round(findings.reduce((acc, f) => acc + f.severity_score, 0) / total) : 0;
+    
+    // Dominant dimension
+    const dimCounts: Record<string, number> = {};
+    findings.forEach(f => {
+      dimCounts[f.dimension_code] = (dimCounts[f.dimension_code] || 0) + 1;
+    });
+    const dominantDim = Object.entries(dimCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'IncidentResponse';
+
+    return { total, critical, entitiesAffected, avgSeverity, dominantDim };
+  }, [findings]);
+
+  // Unique entities for filter dropdown
+  const findingEntitiesList = useMemo(() => {
+    return Array.from(new Set(findings.map(f => f.entity_code))).filter(Boolean).sort();
+  }, [findings]);
+
+  // Unique dimensions for filter dropdown
+  const findingDimensionsList = useMemo(() => {
+    return Array.from(new Set(findings.map(f => f.dimension_code))).filter(Boolean).sort();
+  }, [findings]);
+
+  // Filtered findings based on search and dropdowns
+  const filteredFindings = useMemo(() => {
+    return findings.filter(f => {
+      if (findingSearchQuery.trim()) {
+        const q = findingSearchQuery.toLowerCase().trim();
+        const matchesQuery = 
+          f.title?.toLowerCase().includes(q) ||
+          f.rationale?.toLowerCase().includes(q) ||
+          f.rule_key?.toLowerCase().includes(q) ||
+          f.entity_code?.toLowerCase().includes(q) ||
+          f.dimension_code?.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+
+      if (findingEntityFilter !== 'ALL' && f.entity_code !== findingEntityFilter) {
+        return false;
+      }
+
+      if (findingDimensionFilter !== 'ALL' && f.dimension_code !== findingDimensionFilter) {
+        return false;
+      }
+
+      if (findingSeverityFilter === 'CRITICAL' && f.severity_score < 80) return false;
+      if (findingSeverityFilter === 'ELEVATED' && (f.severity_score < 50 || f.severity_score >= 80)) return false;
+      if (findingSeverityFilter === 'MODERATE' && f.severity_score >= 50) return false;
+
+      return true;
+    });
+  }, [findings, findingSearchQuery, findingEntityFilter, findingDimensionFilter, findingSeverityFilter]);
+
+  // Total pages
+  const totalFindingPages = Math.ceil(filteredFindings.length / findingPageSize) || 1;
+
+  // Current page slice
+  const paginatedFindings = useMemo(() => {
+    const start = (findingCurrentPage - 1) * findingPageSize;
+    return filteredFindings.slice(start, start + findingPageSize);
+  }, [filteredFindings, findingCurrentPage, findingPageSize]);
+
+  // Reset to page 1 whenever any filter changes
+  useEffect(() => {
+    setFindingCurrentPage(1);
+  }, [findingSearchQuery, findingEntityFilter, findingDimensionFilter, findingSeverityFilter, findingPageSize]);
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -219,26 +322,17 @@ export function App() {
     }
   };
 
-  const dimensions = [
-    { key: 'Detection', label: 'Threat Detection' },
-    { key: 'Investigation', label: 'Investigation' },
-    { key: 'Escalation', label: 'Escalation' },
-    { key: 'IncidentResponse', label: 'Incident Response' },
-    { key: 'SecOps', label: 'SecOps' },
-    { key: 'Governance', label: 'Governance' },
-    { key: 'Discipline', label: 'Discipline' },
-    { key: 'Resilience', label: 'Resilience' }
-  ];
 
   const sidebarMenuItems = [
-    { id: 'dashboard', label: 'Executive Dashboard', icon: Activity },
-    { id: 'gap', label: 'Headline KPIs vs Evidence Gap', icon: Scale, highlight: true },
-    { id: 'findings', label: 'Findings Explorer', icon: AlertTriangle, count: findings.length },
-    { id: 'negative', label: 'Negative Space Matrix', icon: EyeOff, count: silentAssets.length },
-    { id: 'queue', label: 'Review Queue', icon: CheckCircle2, count: reviewSamples.length },
-    { id: 'rules', label: 'Dynamic Rules Studio', icon: Sliders },
-    { id: 'validation', label: 'Validation Lab (Lift)', icon: TrendingUp },
-    { id: 'audit', label: 'Audit Trail & Integrity', icon: Lock }
+    { id: 'dashboard', path: '/dashboard', label: 'Executive Dashboard', icon: Activity },
+    { id: 'upload', path: '/dashboard/inject-logs', label: 'Inject Telemetry & Logs', icon: UploadCloud, highlight: true },
+    { id: 'gap', path: '/dashboard/kpis-vs-evidence', label: 'Headline KPIs vs Evidence Gap', icon: Scale },
+    { id: 'findings', path: '/dashboard/findings', label: 'Findings Explorer', icon: AlertTriangle, count: findings.length },
+    { id: 'negative', path: '/dashboard/negative-space', label: 'Negative Space Matrix', icon: EyeOff, count: silentAssets.length },
+    { id: 'queue', path: '/dashboard/review-queue', label: 'Review Queue', icon: CheckCircle2, count: reviewSamples.length },
+    { id: 'rules', path: '/dashboard/rules', label: 'Dynamic Rules Studio', icon: Sliders },
+    { id: 'validation', path: '/dashboard/validation', label: 'Validation Lab (Lift)', icon: TrendingUp },
+    { id: 'audit', path: '/dashboard/audit', label: 'Audit Trail & Integrity', icon: Lock }
   ];
 
   return (
@@ -330,7 +424,7 @@ export function App() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => navigate(tab.path)}
                     className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition text-[11px] font-semibold group ${
                       active 
                         ? 'bg-[#991B1B] text-white font-bold shadow-[0_0_12px_rgba(153,27,27,0.4)] border border-red-600/50' 
@@ -368,6 +462,14 @@ export function App() {
 
             {/* Sidebar Action Buttons */}
             <div className="px-2.5 py-2 border-t border-slate-700/60 bg-black/20 space-y-1.5 flex-shrink-0">
+              <button 
+                onClick={() => setActiveTab('upload')}
+                className="w-full flex items-center justify-center space-x-1.5 text-[11px] bg-[#991B1B]/40 hover:bg-[#991B1B]/60 text-red-200 border border-[#991B1B]/60 px-2.5 py-1.5 rounded-lg font-bold shadow-sm transition hover:scale-[1.02]"
+              >
+                <UploadCloud className="w-3 h-3 text-[#EF4444]" />
+                <span>Inject Telemetry & Logs</span>
+              </button>
+
               <button 
                 onClick={() => setIsScenarioStudioOpen(true)}
                 className="w-full flex items-center justify-center space-x-1.5 text-[11px] bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-700/60 px-2.5 py-1.5 rounded-lg font-bold shadow-sm transition"
@@ -433,84 +535,145 @@ export function App() {
             {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                {/* Top Stat Cards - Compact Single Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {/* Card 1 */}
-                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
-                        Supervisory Target
+                {/* Executive Dashboard Header Bar with Ingestion Shortcut */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h1 className="text-xl font-black text-slate-900 tracking-tight">National Cyber Resilience & Supervisory Posture</h1>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Live Consolidated
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Cross-sector macro supervision, latent failure detection, and peer resilience benchmarking across Critical Sector Entities.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setActiveTab('upload')}
+                      className="inline-flex items-center space-x-2 text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-sm transition hover:scale-105 active:scale-95"
+                    >
+                      <UploadCloud className="w-4 h-4 text-white" />
+                      <span>Inject Telemetry & Logs</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Top Stat Cards - Elegant & Compact */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                  {/* Card 1: Supervisory Target */}
+                  <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-red-50/90 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
-                        CSE-POWER-01
-                      </div>
-                      <div className="text-[11px] text-[#DC2626] font-bold flex items-center gap-1 truncate">
-                        <span>Score: 58</span>
-                        <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold uppercase">High Risk</span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                          Supervisory Target
+                        </span>
+                        <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                          <span className="text-sm font-black text-slate-900 font-mono">
+                            CSE-POWER-01
+                          </span>
+                          <span className="text-[11px] text-red-600 font-bold truncate">
+                            Score: 58
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-2.5 bg-[#FEE2E2] rounded-xl text-[#DC2626] flex-shrink-0 ml-2 shadow-sm">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200/60 shrink-0 ml-2">
+                      High Risk
+                    </span>
                   </div>
 
-                  {/* Card 2 */}
-                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
-                        Active Execution Gaps
+                  {/* Card 2: Active Execution Gaps */}
+                  <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                        <Scale className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
-                        {findings.filter(f => f.kind === 'execution_gap').length} Gaps
-                      </div>
-                      <div className="text-[11px] text-[#D97706] font-semibold truncate">
-                        Fast-close &amp; unescalated
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                          Active Execution Gaps
+                        </span>
+                        <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                          <span className="text-sm font-black text-amber-600 font-mono">
+                            {findings.filter(f => f.kind === 'execution_gap').length} Gaps
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium truncate">
+                            Fast-close &amp; unescalated
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-2.5 bg-[#FEF3C7] rounded-xl text-[#D97706] flex-shrink-0 ml-2 shadow-sm">
-                      <Scale className="w-5 h-5" />
-                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200/60 shrink-0 ml-2">
+                      {findings.filter(f => f.kind === 'execution_gap').length} Gaps
+                    </span>
                   </div>
 
-                  {/* Card 3 */}
-                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
-                        Silent Critical Assets
+                  {/* Card 3: Silent Critical Assets */}
+                  <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-purple-50/90 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                        <EyeOff className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-black text-[#0F172A] tracking-tight truncate">
-                        {silentAssets.length} Systems
-                      </div>
-                      <div className="text-[11px] text-[#7C3AED] font-semibold truncate">
-                        &gt;14 days zero telemetry
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                          Silent Critical Assets
+                        </span>
+                        <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                          <span className="text-sm font-black text-purple-700 font-mono">
+                            {silentAssets.length} Systems
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium truncate">
+                            &gt;14 days zero telemetry
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-2.5 bg-[#EDE9FE] rounded-xl text-[#7C3AED] flex-shrink-0 ml-2 shadow-sm">
-                      <EyeOff className="w-5 h-5" />
-                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60 shrink-0 ml-2">
+                      {silentAssets.length} Silent
+                    </span>
                   </div>
 
-                  {/* Card 4 */}
-                  <div className="bg-white border border-[#E2E8F0] p-3.5 rounded-xl shadow-sm hover:border-[#CBD5E1] transition flex items-center justify-between">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="text-[11px] uppercase tracking-wider font-bold text-[#64748B] truncate">
-                        Review Efficiency Lift
+                  {/* Card 4: Review Efficiency Lift */}
+                  <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50/90 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                        <TrendingUp className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-black text-[#16A34A] tracking-tight truncate">
-                        3.42× Lift
-                      </div>
-                      <div className="text-[11px] text-[#16A34A] font-semibold truncate">
-                        vs Random Sampling
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                          Review Efficiency Lift
+                        </span>
+                        <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                          <span className="text-sm font-black text-emerald-600 font-mono">
+                            3.42× Lift
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium truncate">
+                            vs Random Sampling
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-2.5 bg-[#DCFCE7] rounded-xl text-[#16A34A] flex-shrink-0 ml-2 shadow-sm">
-                      <TrendingUp className="w-5 h-5" />
-                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200/60 shrink-0 ml-2">
+                      3.42×
+                    </span>
                   </div>
                 </div>
 
               {/* End-to-End Supervisory Telemetry & Detection Sankey Flow */}
-              <SupervisorySankeyFlow />
+              <SupervisorySankeyFlow 
+                totalAlerts={validationMetrics?.totalAlertsInPool || (entities[0] as any)?.alert_count || 49999}
+                totalCases={validationMetrics?.totalCasesInPool || 24999}
+                totalAssets={(entities[0] as any)?.asset_count || 160}
+                executionGapsCount={findings.filter(f => f.kind === 'execution_gap').length}
+                silentAssetsCount={silentAssets.length}
+                findingsCount={findings.length}
+                reviewQueueCount={reviewSamples.length}
+                entityName={entities[0]?.name}
+                entityCode={entities[0]?.code}
+              />
 
               {/* ================= MULTI-QUARTER LONGITUDINAL RESILIENCE TRAJECTORY (REQ 16) ================= */}
               <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] space-y-4">
@@ -778,48 +941,18 @@ export function App() {
                 </div>
               </div>
 
-              {/* 8-Dimension Assessment Heatmap */}
-              <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
-                <h2 className="text-base font-bold text-[#0F172A] mb-1">8-Dimension Operational Resilience Heatmap</h2>
-                <p className="text-xs text-[#64748B] mb-5">Granular supervisory evaluation across the eight mandated capabilities</p>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-center text-xs">
-                    <thead>
-                      <tr className="border-b border-[#E2E8F0]">
-                        <th className="text-left py-3 px-3 text-[#64748B] font-semibold">Entity</th>
-                        {dimensions.map(d => (
-                          <th key={d.key} className="py-3 px-2 text-[11px] text-[#334155] font-bold">{d.label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E2E8F0]">
-                      {entities.map(ent => (
-                        <tr key={ent.id} className="hover:bg-[#F1F5F9]">
-                          <td className="text-left py-3.5 px-3 font-bold text-[#0F172A] whitespace-nowrap">
-                            {ent.code}
-                          </td>
-                          {dimensions.map(d => {
-                            const val = ent.dimension_scores?.[d.key] || 15;
-                            let bg = 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC]';
-                            if (val >= 60) bg = 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-extrabold';
-                            else if (val >= 35) bg = 'bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D] font-bold';
-
-                            return (
-                              <td key={d.key} className="py-2 px-1">
-                                <div className={`py-1.5 px-2 rounded-lg text-xs font-mono ${bg}`}>
-                                  {val}
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {/* ================= 8-DIMENSION OPERATIONAL RESILIENCE CIRCULAR DISTRIBUTION (PIE / DONUT / POLAR) ================= */}
+              <ResilienceDimensionPieChart entities={entities} />
             </div>
+          )}
+
+          {/* ================= TAB: INJECT TELEMETRY & LOGS ================= */}
+          {activeTab === 'upload' && (
+            <EvidenceIngestionEnclave 
+              onDataRefreshed={fetchAllData}
+              onNavigateToDashboard={() => setActiveTab('dashboard')}
+            />
           )}
 
           {/* ================= TAB 2: HEADLINE KPIS VS UNDERLYING EVIDENCE ================= */}
@@ -915,47 +1048,332 @@ export function App() {
 
           {/* ================= TAB 3: FINDINGS EXPLORER ================= */}
           {activeTab === 'findings' && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-bold text-[#0F172A]">Supervisory Findings ({findings.length})</h2>
-                <p className="text-xs text-[#64748B]">Algorithmic findings backed by forensic evidence, peer baselines, and parameter rationales</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3.5">
-                {findings.map(f => (
-                  <div 
-                    key={f.id}
-                    onClick={() => handleOpenFindingDetail(f.id)}
-                    className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-start justify-between"
-                  >
-                    <div className="space-y-1.5 flex-1 pr-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-mono font-bold bg-[#0B0F19] text-[#6FCF64] px-2.5 py-0.5 rounded-md">
-                          {f.rule_key}
-                        </span>
-                        <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
-                          {f.entity_code}
-                        </span>
-                        <span className="text-xs text-[#64748B] font-medium">
-                          {f.dimension_code}
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-bold text-[#0F172A]">{f.title}</h3>
-                      <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
+            <div className="space-y-5">
+              {/* 4 Summary Metric Cards (Elegant & Compact) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {/* Card 1: Total Findings */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50/90 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                      <FileText className="w-3.5 h-3.5" />
                     </div>
-
-                    <div className="flex items-center space-x-3.5 shrink-0">
-                      <div className="text-right">
-                        <div className="text-xs text-[#64748B] font-medium">Severity</div>
-                        <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
-                          {f.severity_score} / 100
-                        </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Total Findings
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-slate-900 font-mono">
+                          {findingsStats.total}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Validated records
+                        </span>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-[#94A3B8]" />
                     </div>
                   </div>
-                ))}
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-200/60 shrink-0 ml-2">
+                    {findingsStats.total}
+                  </span>
+                </div>
+
+                {/* Card 2: Critical Severity */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-red-50/90 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Critical Severity (&ge;80)
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-red-600 font-mono">
+                          {findingsStats.critical}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Immediate focus
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200/60 shrink-0 ml-2">
+                    {findingsStats.critical}
+                  </span>
+                </div>
+
+                {/* Card 3: Implicated Entities */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                      <Building2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Implicated Entities
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-amber-600 font-mono">
+                          {findingsStats.entitiesAffected}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          CSEs affected
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200/60 shrink-0 ml-2">
+                    {findingsStats.entitiesAffected} CSEs
+                  </span>
+                </div>
+
+                {/* Card 4: Mean Severity Score */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50/90 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <Scale className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Mean Severity Index
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-slate-900 font-mono">
+                          {findingsStats.avgSeverity}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate max-w-[120px]">
+                          Dominant: {findingsStats.dominantDim}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200/60 shrink-0 ml-2">
+                    {findingsStats.avgSeverity}/100
+                  </span>
+                </div>
               </div>
+
+              {/* Filter & Search Controls Bar */}
+              <div className="bg-white border border-[#E2E8F0] rounded-2xl p-4 shadow-xs space-y-3">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={findingSearchQuery}
+                      onChange={(e) => { setFindingSearchQuery(e.target.value); setFindingCurrentPage(1); }}
+                      placeholder="Search findings by rule (e.g. EG-01), keyword, entity code, or rationale..."
+                      className="w-full pl-9 pr-8 py-2 text-xs font-medium bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition text-slate-800 placeholder:text-slate-400"
+                    />
+                    {findingSearchQuery && (
+                      <button
+                        onClick={() => { setFindingSearchQuery(''); setFindingCurrentPage(1); }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter Selectors Group */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Entity Filter */}
+                    <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                      <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <select
+                        value={findingEntityFilter}
+                        onChange={(e) => { setFindingEntityFilter(e.target.value); setFindingCurrentPage(1); }}
+                        className="text-xs font-semibold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">All Entities ({findingEntitiesList.length})</option>
+                        {findingEntitiesList.map(code => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Dimension Filter */}
+                    <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                      <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <select
+                        value={findingDimensionFilter}
+                        onChange={(e) => { setFindingDimensionFilter(e.target.value); setFindingCurrentPage(1); }}
+                        className="text-xs font-semibold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">All Dimensions ({findingDimensionsList.length})</option>
+                        {findingDimensionsList.map(dim => (
+                          <option key={dim} value={dim}>{dim}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Severity Filter */}
+                    <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                      <ShieldAlert className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <select
+                        value={findingSeverityFilter}
+                        onChange={(e) => { setFindingSeverityFilter(e.target.value); setFindingCurrentPage(1); }}
+                        className="text-xs font-semibold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">All Severities</option>
+                        <option value="CRITICAL">Critical (&ge;80)</option>
+                        <option value="ELEVATED">Elevated (50–79)</option>
+                        <option value="MODERATE">Moderate (&lt;50)</option>
+                      </select>
+                    </div>
+
+                    {/* Page Size Selector */}
+                    <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                      <span className="text-[11px] text-slate-500 font-medium">Show:</span>
+                      <select
+                        value={findingPageSize}
+                        onChange={(e) => { setFindingPageSize(Number(e.target.value)); setFindingCurrentPage(1); }}
+                        className="text-xs font-bold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value={5}>5 / page</option>
+                        <option value={6}>6 / page</option>
+                        <option value={10}>10 / page</option>
+                        <option value={25}>25 / page</option>
+                      </select>
+                    </div>
+
+                    {/* Clear Filters Button if any active */}
+                    {(findingSearchQuery || findingEntityFilter !== 'ALL' || findingDimensionFilter !== 'ALL' || findingSeverityFilter !== 'ALL') && (
+                      <button
+                        onClick={() => {
+                          setFindingSearchQuery('');
+                          setFindingEntityFilter('ALL');
+                          setFindingDimensionFilter('ALL');
+                          setFindingSeverityFilter('ALL');
+                          setFindingCurrentPage(1);
+                        }}
+                        className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition"
+                        title="Reset all filters"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Counter */}
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                  <span className="font-medium">
+                    Showing <strong className="text-slate-800 font-bold">{filteredFindings.length}</strong> of <strong className="text-slate-800 font-bold">{findings.length}</strong> supervisory findings
+                  </span>
+                  {filteredFindings.length > 0 && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Page {findingCurrentPage} of {totalFindingPages}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Paginated Findings Grid */}
+              {paginatedFindings.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3.5">
+                  {paginatedFindings.map(f => (
+                    <div 
+                      key={f.id}
+                      onClick={() => handleOpenFindingDetail(f.id)}
+                      className="bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1] p-5 rounded-2xl cursor-pointer transition shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-start justify-between group hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <div className="space-y-1.5 flex-1 pr-4">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-mono font-bold bg-[#0F172A] text-[#4ADE80] px-2.5 py-0.5 rounded-md shadow-xs">
+                            {f.rule_key}
+                          </span>
+                          <span className="text-xs font-bold text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] px-2 py-0.5 rounded-md">
+                            {f.entity_code}
+                          </span>
+                          <span className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-medium">
+                            {f.dimension_code}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-red-700 transition-colors">
+                          {f.title}
+                        </h3>
+                        <p className="text-xs text-[#334155] line-clamp-2 leading-relaxed">{f.rationale}</p>
+                      </div>
+
+                      <div className="flex items-center space-x-3.5 shrink-0">
+                        <div className="text-right">
+                          <div className="text-xs text-[#64748B] font-medium">Severity</div>
+                          <div className={`text-base font-extrabold font-mono ${f.severity_score >= 80 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
+                            {f.severity_score} / 100
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-[#94A3B8] group-hover:text-slate-700 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty state when no findings match search/filter */
+                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-12 text-center shadow-xs">
+                  <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <h3 className="text-sm font-bold text-slate-700">No findings match your filter criteria</h3>
+                  <p className="text-xs text-slate-500 mt-1">Try adjusting the search keyword or resetting filters.</p>
+                  <button
+                    onClick={() => {
+                      setFindingSearchQuery('');
+                      setFindingEntityFilter('ALL');
+                      setFindingDimensionFilter('ALL');
+                      setFindingSeverityFilter('ALL');
+                      setFindingCurrentPage(1);
+                    }}
+                    className="mt-3 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#111827] text-white hover:bg-black transition shadow-xs"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              )}
+
+              {/* Pagination Controls Bar */}
+              {totalFindingPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-[#E2E8F0] px-5 py-3.5 rounded-2xl shadow-xs">
+                  <span className="text-xs text-slate-600 font-medium">
+                    Showing <strong className="text-slate-900 font-bold">{(findingCurrentPage - 1) * findingPageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(findingCurrentPage * findingPageSize, filteredFindings.length)}</strong> of <strong className="text-slate-900 font-bold">{filteredFindings.length}</strong> findings
+                  </span>
+
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => setFindingCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={findingCurrentPage === 1}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalFindingPages }, (_, i) => i + 1).map(pageNum => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setFindingCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center ${
+                            findingCurrentPage === pageNum
+                              ? 'bg-[#111827] text-white shadow-xs'
+                              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setFindingCurrentPage(p => Math.min(totalFindingPages, p + 1))}
+                      disabled={findingCurrentPage === totalFindingPages}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
