@@ -586,7 +586,7 @@ export function App() {
                     </span>
                   </div>
 
-                  {/* Card 2: Active Execution Gaps */}
+                  {/* Card 2: Active Supervisory Defects */}
                   <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
@@ -594,11 +594,11 @@ export function App() {
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
-                          Active Execution Gaps
+                          Active Supervisory Defects
                         </span>
                         <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
                           <span className="text-sm font-black text-amber-600 font-mono">
-                            {findings.filter(f => f.kind === 'execution_gap').length} Gaps
+                            {findings.filter(f => f.kind === 'execution_gap').length} Defects
                           </span>
                           <span className="text-[11px] text-slate-500 font-medium truncate">
                             Fast-close &amp; unescalated
@@ -951,6 +951,8 @@ export function App() {
           {activeTab === 'upload' && (
             <EvidenceIngestionEnclave 
               entities={entities}
+              findings={findings}
+              kpiGaps={kpiGaps}
               onDataRefreshed={fetchAllData}
               onNavigateToDashboard={() => setActiveTab('dashboard')}
               onSelectReportEntity={(ent) => {
@@ -968,7 +970,7 @@ export function App() {
                 <Info className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
                 <div>
                   <strong className="font-bold text-sm block text-[#78350F] mb-1">
-                    Core Supervisory Problem: The Execution Gap
+                    Core Supervisory Problem: Operational Discrepancy
                   </strong>
                   Documented metrics, self-assessments, and reported SLAs (e.g. "97% SLA compliance") often disguise operational dysfunction.
                   SAT-SA contrasts headline reported numbers against forensic evidence quality (fast closures, zero investigation steps, un-escalated critical threats) to expose supervisory risk.
@@ -988,7 +990,7 @@ export function App() {
                         <th className="py-3 px-6">Entity</th>
                         <th className="py-3 px-6">Reported Headline SLA</th>
                         <th className="py-3 px-6">Evidence Quality Score</th>
-                        <th className="py-3 px-6">Execution Gap Size</th>
+                        <th className="py-3 px-6">Discrepancy Gap Size</th>
                         <th className="py-3 px-6">Fast Closures (&lt;10m)</th>
                         <th className="py-3 px-6">Un-escalated Critical</th>
                         <th className="py-3 px-6 text-right">Supervisory Action</th>
