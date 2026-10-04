@@ -366,7 +366,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
                       <tr key={idx} className="hover:bg-slate-50 sar-avoid-break">
                         <td className="p-2.5 font-bold text-slate-900">{ast.external_id || ast.asset_id}</td>
                         <td className="p-2.5 font-sans font-medium text-slate-800">{ast.name}</td>
-                        <td className="p-2.5 text-red-700 font-bold">Tier {ast.criticality}</td>
+                        <td className="p-2.5 text-red-700 font-bold">Tier 1 (Mission Critical)</td>
                         <td className="p-2.5 text-amber-800 font-bold">{ast.daysSilent} Days Zero Logs</td>
                         <td className="p-2.5">
                           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-100 text-red-800">

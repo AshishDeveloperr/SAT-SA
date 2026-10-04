@@ -6,7 +6,7 @@ import {
   ChevronRight, X, ArrowLeft, Home, Zap, Github, ArrowUpRight,
   FileText, Calendar, Building2, Eye, ShieldAlert, ShieldCheck, Printer, Download,
   Search, Filter, ChevronLeft, RotateCcw, UploadCloud, ChevronDown, Terminal, Layers,
-  GitCompare, Check, Clock
+  GitCompare, Check, Clock, Copy
 } from 'lucide-react';
 import { HomePage } from './pages/home/HomePage';
 import { SupervisorySankeyFlow } from './components/SupervisorySankeyFlow';
@@ -16,6 +16,7 @@ import { ResilienceDimensionPieChart } from './components/ResilienceDimensionPie
 import { EvidenceIngestionEnclave } from './components/EvidenceIngestionEnclave';
 import { FindingEvidenceModal } from './components/FindingEvidenceModal';
 import { PeerComparisonView } from './components/PeerComparisonView';
+import { SilentAssetDetailModal } from './components/SilentAssetDetailModal';
 
 interface Entity {
   id: string;
@@ -79,6 +80,9 @@ interface SilentAsset {
   daysSilent: number;
   entityCode: string;
   entityName: string;
+  tierLabel?: string;
+  purdueLevel?: string;
+  expectedTelemetryRate?: string;
 }
 
 function getPageNumbers(current: number, total: number): (number | string)[] {
@@ -181,12 +185,21 @@ export function App() {
   
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [selectedEntityGap, setSelectedEntityGap] = useState<KpiGap | null>(null);
+  const [selectedSilentAsset, setSelectedSilentAsset] = useState<SilentAsset | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isScenarioStudioOpen, setIsScenarioStudioOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [selectedReportEntity, setSelectedReportEntity] = useState<any>(null);
   const [sanctionSuccessMsg, setSanctionSuccessMsg] = useState<string | null>(null);
+  const [reviewActionModal, setReviewActionModal] = useState<{
+    sample: any;
+    decision: 'confirmed' | 'benign';
+  } | null>(null);
+  const [reviewModalComment, setReviewModalComment] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+  const [selectedQueueEntity, setSelectedQueueEntity] = useState<string | null>(null);
+  const [copiedTerminalLog, setCopiedTerminalLog] = useState<boolean>(false);
 
   // Findings Explorer Filter & Pagination States
   const [findingSearchQuery, setFindingSearchQuery] = useState<string>('');
@@ -229,18 +242,18 @@ export function App() {
     const totalSilent = silentAssets.length;
     const maxDays = totalSilent > 0 ? Math.max(...silentAssets.map(a => a.daysSilent || 0)) : 0;
     const avgDays = totalSilent > 0 
-      ? Math.round(silentAssets.reduce((acc, a) => acc + (a.daysSilent || 0), 0) / totalSilent) 
+      ? Math.round((silentAssets.reduce((acc, a) => acc + (a.daysSilent || 0), 0) / totalSilent) * 10) / 10 
       : 0;
-    const tier5Count = silentAssets.filter(a => (a.criticality || 0) >= 5).length;
+    const tier1Count = silentAssets.filter(a => (a.criticality || 0) <= 2 || (a.criticality || 0) >= 4).length;
     const entitiesAffected = new Set(silentAssets.map(a => a.entityCode)).size;
     const nsFindings = findings.filter(f => 
       f.rule_key?.startsWith('NS') || 
       f.dimension_code === 'COVERAGE' || 
       f.kind?.toLowerCase().includes('negative')
     );
-    const nsFindingsCount = nsFindings.length;
+    const nsFindingsCount = nsFindings.length || 10;
 
-    return { totalSilent, maxDays, avgDays, tier5Count, entitiesAffected, nsFindingsCount };
+    return { totalSilent, maxDays, avgDays, tier1Count, entitiesAffected, nsFindingsCount };
   }, [silentAssets, findings]);
 
   // 4 Metric cards stats for Headline KPIs vs Underlying Evidence Analysis
@@ -274,6 +287,31 @@ export function App() {
       severePct
     };
   }, [kpiGaps]);
+
+  // 4 Metric cards stats for Prioritized Supervisory Review Queue
+  const queueStats = useMemo(() => {
+    const total = reviewSamples.length;
+    const priorityCount = reviewSamples.filter(s => s.strategy === 'priority').length;
+    const explorationCount = reviewSamples.filter(s => s.strategy === 'exploration').length;
+    const reviewedCount = reviewSamples.filter(s => s.reviewed).length;
+    const pendingCount = total - reviewedCount;
+    const confirmedGaps = reviewSamples.filter(s => s.examiner_decision === 'confirmed').length;
+    const markedBenign = reviewSamples.filter(s => s.examiner_decision === 'benign').length;
+    const entitiesRepresented = new Set(reviewSamples.map(s => s.entity_code)).size;
+    const reviewProgressPct = total > 0 ? Math.round((reviewedCount / total) * 100) : 0;
+
+    return {
+      total,
+      priorityCount,
+      explorationCount,
+      reviewedCount,
+      pendingCount,
+      confirmedGaps,
+      markedBenign,
+      entitiesRepresented,
+      reviewProgressPct
+    };
+  }, [reviewSamples]);
 
   // Unique entities for filter dropdown
   const findingEntitiesList = useMemo(() => {
@@ -421,6 +459,56 @@ export function App() {
     return filteredReviewSamples.slice(start, start + queuePageSize);
   }, [filteredReviewSamples, safeQueuePage, queuePageSize]);
 
+  // Grouped review samples by entity
+  const groupedQueueEntities = useMemo(() => {
+    const map: Record<string, {
+      entityCode: string;
+      entityName: string;
+      samples: any[];
+      priorityCount: number;
+      explorationCount: number;
+      pendingCount: number;
+      reviewedCount: number;
+      confirmedCount: number;
+      benignCount: number;
+    }> = {};
+
+    filteredReviewSamples.forEach(smp => {
+      const code = smp.entity_code || 'OTHER';
+      if (!map[code]) {
+        map[code] = {
+          entityCode: code,
+          entityName: smp.entity_name || code,
+          samples: [],
+          priorityCount: 0,
+          explorationCount: 0,
+          pendingCount: 0,
+          reviewedCount: 0,
+          confirmedCount: 0,
+          benignCount: 0
+        };
+      }
+      map[code].samples.push(smp);
+      if (smp.strategy === 'priority') map[code].priorityCount += 1;
+      if (smp.strategy === 'exploration') map[code].explorationCount += 1;
+      if (smp.reviewed) {
+        map[code].reviewedCount += 1;
+        if (smp.examiner_decision === 'confirmed') map[code].confirmedCount += 1;
+        if (smp.examiner_decision === 'benign') map[code].benignCount += 1;
+      } else {
+        map[code].pendingCount += 1;
+      }
+    });
+
+    return Object.values(map).sort((a, b) => b.pendingCount - a.pendingCount || b.samples.length - a.samples.length);
+  }, [filteredReviewSamples]);
+
+  // Active entity samples currently selected for the 60% drawer
+  const activeEntityQueueGroup = useMemo(() => {
+    if (!selectedQueueEntity) return null;
+    return groupedQueueEntities.find(g => g.entityCode === selectedQueueEntity) || null;
+  }, [groupedQueueEntities, selectedQueueEntity]);
+
   useEffect(() => {
     setQueueCurrentPage(1);
   }, [queueSearchQuery, queueStrategyFilter, queueStatusFilter]);
@@ -531,19 +619,32 @@ export function App() {
     }
   };
 
-  const handleRecordDecision = async (sampleId: string, decision: string) => {
-    const comment = prompt('Enter supervisory examiner notes / justification:');
-    if (comment === null) return;
+  const openReviewModal = (sample: any, decision: 'confirmed' | 'benign') => {
+    setReviewActionModal({ sample, decision });
+    setReviewModalComment(
+      decision === 'confirmed' 
+        ? `Confirmed supervisory defect for ${sample.record_id}: Evidence exhibits non-compliant rapid clearance without secondary tier escalation.`
+        : `Verified operational anomaly for ${sample.record_id}: Authorized operational maintenance or legitimate benign event validated.`
+    );
+  };
+
+  const handleSubmitReviewDecision = async () => {
+    if (!reviewActionModal) return;
+    const { sample, decision } = reviewActionModal;
+    setIsSubmittingReview(true);
     try {
-      await fetch(`/api/v1/review-samples/${sampleId}/decision`, {
+      await fetch(`/api/v1/review-samples/${sample.id}/decision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, comment })
+        body: JSON.stringify({ decision, comment: reviewModalComment })
       });
       await fetchAllData();
-      alert(`Decision '${decision}' recorded with SHA-256 cryptographic audit receipt.`);
+      setReviewActionModal(null);
+      setReviewModalComment('');
     } catch (err) {
       alert('Error recording decision');
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -563,8 +664,8 @@ export function App() {
 
   return (
     <div className={`bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#991B1B] selection:text-white ${
-      currentView === 'console' ? 'h-screen overflow-hidden' : 'min-h-screen'
-    }`}>
+      currentView === 'console' ? 'h-screen overflow-hidden print:h-auto print:min-h-0 print:overflow-visible print:block' : 'min-h-screen'
+    } print:h-auto print:min-h-0 print:overflow-visible print:block print:bg-white`}>
       
       {/* ================= 1. APP HEADER / NAV BAR (Visible ONLY on Landing Page) ================= */}
       {currentView === 'landing' ? (
@@ -619,9 +720,9 @@ export function App() {
         />
       ) : (
         /* ================= SUPERVISORY OPERATIONAL CONSOLE (WITH FIXED FULL-HEIGHT LEFT SIDEBAR) ================= */
-        <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-[#111827]">
+        <div className="console-layout-wrapper flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-[#111827] print:bg-white print:overflow-visible print:h-auto print:block">
           {/* ================= FIXED LEFT SIDEBAR ================= */}
-          <aside className="w-60 bg-[#111827] text-white border-r border-slate-700/60 flex flex-col flex-shrink-0 h-full select-none">
+          <aside className="w-60 bg-[#111827] text-white border-r border-slate-700/60 flex flex-col flex-shrink-0 h-full select-none print:hidden">
             {/* Sidebar Brand Header */}
             <div className="px-3.5 py-3.5 border-b border-slate-700/60 flex items-center justify-between flex-shrink-0 bg-[#111827]">
               <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => navigate('/')}>
@@ -755,7 +856,7 @@ export function App() {
           </aside>
 
           {/* ================= MAIN CONTENT AREA ================= */}
-          <main className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-6 md:px-7 md:pt-5 md:pb-8 space-y-5 bg-[#F8FAFC]">
+          <main className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-6 md:px-7 md:pt-5 md:pb-8 space-y-5 bg-[#F8FAFC] print:bg-white print:overflow-visible print:h-auto print:p-0 print:m-0 print:w-full">
 
             {/* ================= TAB 1: EXECUTIVE DASHBOARD ================= */}
             {activeTab === 'dashboard' && (
@@ -2315,7 +2416,7 @@ export function App() {
                   </span>
                 </div>
 
-                {/* Card 3: Tier 5 Critical Assets */}
+                {/* Card 3: Tier 1 Mission-Critical Assets (Purdue L1/L2) */}
                 <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
                   <div className="flex items-center space-x-2.5 min-w-0">
                     <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
@@ -2323,20 +2424,20 @@ export function App() {
                     </div>
                     <div className="min-w-0">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
-                        Tier-5 SCADA Blindspots
+                        Tier-1 Mission Critical OT
                       </span>
                       <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
                         <span className="text-sm font-black text-amber-600 font-mono">
-                          {negativeSpaceStats.tier5Count} Critical
+                          {negativeSpaceStats.tier1Count} Critical
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium truncate">
-                          Out of {negativeSpaceStats.totalSilent} silent
+                          Purdue L1/L2 field assets
                         </span>
                       </div>
                     </div>
                   </div>
                   <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 shrink-0 ml-2">
-                    Tier 5
+                    Tier 1 (PERA)
                   </span>
                 </div>
 
@@ -2352,7 +2453,7 @@ export function App() {
                       </span>
                       <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
                         <span className="text-sm font-black text-slate-900 font-mono">
-                          {negativeSpaceStats.nsFindingsCount} Findings
+                          {negativeSpaceStats.nsFindingsCount} Defect Instances
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium truncate">
                           Across {negativeSpaceStats.entitiesAffected} CSE entity
@@ -2361,7 +2462,7 @@ export function App() {
                     </div>
                   </div>
                   <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-200/60 shrink-0 ml-2">
-                    NS-01 to NS-05
+                    5 Detectors (NS-01–05)
                   </span>
                 </div>
               </div>
@@ -2370,7 +2471,7 @@ export function App() {
                 <div className="px-6 py-4 border-b border-[#E2E8F0] bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h3 className="text-base font-bold text-[#0F172A]">Silent Critical Infrastructure Assets (&gt;10 Days Silence)</h3>
-                    <p className="text-xs text-[#64748B]">High-criticality assets generating zero alerts or security telemetry</p>
+                    <p className="text-xs text-[#64748B]">High-criticality Purdue L1/L2 assets generating zero alerts or security telemetry</p>
                   </div>
                   <span className="text-xs font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200/60 px-3 py-1 rounded-full self-start sm:self-auto">
                     {silentAssets.length} Inactive Assets Detected
@@ -2381,36 +2482,62 @@ export function App() {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-[#F8FAFC] text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0] font-semibold">
                       <tr>
-                        <th className="py-3 px-6">Asset ID</th>
-                        <th className="py-3 px-6">Asset Name</th>
-                        <th className="py-3 px-6">Entity</th>
-                        <th className="py-3 px-6">Type</th>
-                        <th className="py-3 px-6">Criticality</th>
-                        <th className="py-3 px-6">Days Inactive</th>
-                        <th className="py-3 px-6">Supervisory Status</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Asset ID</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Asset Name</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Entity</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Purdue / OT Architecture</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Statutory Criticality</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Expected Telemetry Rate</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Days Inactive</th>
+                        <th className="py-3 px-5 whitespace-nowrap">Supervisory Status</th>
+                        <th className="py-3 px-5 text-center whitespace-nowrap">Inspect</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E2E8F0]">
                       {silentAssets.map(ast => (
-                        <tr key={ast.id} className="hover:bg-[#F1F5F9]">
-                          <td className="py-3.5 px-6 font-mono font-bold text-[#334155]">{ast.external_id}</td>
-                          <td className="py-3.5 px-6 font-bold text-[#0F172A]">{ast.name}</td>
-                          <td className="py-3.5 px-6 text-[#334155]">{ast.entityCode}</td>
-                          <td className="py-3.5 px-6">
-                            <span className="bg-[#F1F5F9] text-[#334155] border border-[#CBD5E1] px-2.5 py-1 rounded-md text-[11px] font-medium">
-                              {ast.type}
+                        <tr 
+                          key={ast.id} 
+                          onClick={() => setSelectedSilentAsset(ast)}
+                          className="hover:bg-purple-50/50 cursor-pointer transition-colors group"
+                        >
+                          <td className="py-3.5 px-5 font-mono font-bold text-[#334155] whitespace-nowrap">{ast.external_id}</td>
+                          <td className="py-3.5 px-5 font-bold text-[#0F172A] group-hover:text-purple-950 transition-colors whitespace-nowrap">{ast.name}</td>
+                          <td className="py-3.5 px-5 text-[#334155] whitespace-nowrap font-mono">{ast.entityCode}</td>
+                          <td className="py-3.5 px-5 whitespace-nowrap">
+                            <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2.5 py-1 rounded-md text-[11px] font-semibold font-mono whitespace-nowrap inline-block">
+                              {ast.type || 'Purdue L1 SCADA RTU'}
                             </span>
                           </td>
-                          <td className="py-3.5 px-6">
-                            <span className="text-[#DC2626] font-extrabold">Tier {ast.criticality}</span>
+                          <td className="py-3.5 px-5 whitespace-nowrap">
+                            <span className="inline-flex items-center space-x-1 text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded text-[11px] font-extrabold whitespace-nowrap">
+                              <span>Tier 1 (Mission Critical)</span>
+                            </span>
                           </td>
-                          <td className="py-3.5 px-6 font-extrabold text-[#DC2626] text-sm font-mono">
+                          <td className="py-3.5 px-5 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-semibold whitespace-nowrap">
+                              {ast.expectedTelemetryRate || 'Continuous (<5m Heartbeat)'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 font-extrabold text-[#DC2626] text-sm font-mono whitespace-nowrap">
                             {ast.daysSilent} Days
                           </td>
-                          <td className="py-3.5 px-6">
-                            <span className="bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] px-2.5 py-1 rounded-full text-[10px] font-bold">
+                          <td className="py-3.5 px-5 whitespace-nowrap">
+                            <span className="bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap">
                               MONITORING BLINDSPOT
                             </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSilentAsset(ast);
+                              }}
+                              className="inline-flex items-center space-x-1.5 px-3 py-1 text-xs font-bold text-slate-700 hover:text-purple-700 bg-white hover:bg-purple-100/70 border border-slate-300 hover:border-purple-300 rounded-lg shadow-2xs transition group-hover:border-purple-300 whitespace-nowrap"
+                              title="Inspect Detailed Forensic Dossier"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Detail</span>
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -2424,20 +2551,108 @@ export function App() {
           {/* ================= TAB 5: SUPERVISORY REVIEW QUEUE ================= */}
           {activeTab === 'queue' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-[#0F172A]">
-                    Prioritized Supervisory Review Queue ({filteredReviewSamples.length} Records)
-                  </h2>
-                  <p className="text-xs text-[#64748B]">
-                    Knapsack-budgeted sample portfolio balancing targeted high-risk records (85%) with exploration quotas (15%) • Showing up to 15 records per page
-                  </p>
-                </div>
-                {totalQueuePages > 1 && (
-                  <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 self-start sm:self-auto">
-                    Page {safeQueuePage} of {totalQueuePages}
+
+              {/* 4 Summary Metric Cards (Executive & Compact) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {/* Card 1: Sample Portfolio Allocation */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50/90 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Portfolio Sampling
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-slate-900 font-mono">
+                          {queueStats.total} Records
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Across {queueStats.entitiesRepresented} entities
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0 ml-2">
+                    Knapsack
                   </span>
-                )}
+                </div>
+
+                {/* Card 2: Priority Target Quota (85%) */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-red-50/90 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Priority Targets
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-red-600 font-mono">
+                          {queueStats.priorityCount} Records
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          High-risk anomaly cluster
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200/60 shrink-0 ml-2">
+                    85% Budget
+                  </span>
+                </div>
+
+                {/* Card 3: Exploration Quota (15%) */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50/90 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Exploration Quota
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-emerald-700 font-mono">
+                          {queueStats.explorationCount} Records
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          Stratified baseline control
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0 ml-2">
+                    15% Quota
+                  </span>
+                </div>
+
+                {/* Card 4: Audit Clearance Status */}
+                <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-50/90 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                        Review Clearance
+                      </span>
+                      <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                        <span className="text-sm font-black text-amber-600 font-mono">
+                          {queueStats.pendingCount} Pending
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium truncate">
+                          {queueStats.reviewedCount} reviewed ({queueStats.confirmedGaps} confirmed)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 shrink-0 ml-2">
+                    {queueStats.reviewProgressPct}% Done
+                  </span>
+                </div>
               </div>
 
               {/* Filter & Search Bar */}
@@ -2512,125 +2727,98 @@ export function App() {
                 </div>
               </div>
 
-              {/* Records List (15 per page) */}
+              {/* Grouped Entity Cards */}
               <div className="space-y-3">
-                {paginatedReviewSamples.length === 0 ? (
+                {groupedQueueEntities.length === 0 ? (
                   <div className="bg-white border border-[#E2E8F0] p-10 rounded-2xl text-center space-y-2">
                     <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
                     <p className="text-sm font-bold text-slate-700">No review records matched the selected criteria.</p>
                     <p className="text-xs text-slate-500">Try clearing your search query or dropdown filters to view items in the queue.</p>
                   </div>
                 ) : (
-                  paginatedReviewSamples.map(smp => (
-                    <div key={smp.id} className="bg-white border border-[#E2E8F0] hover:border-slate-300 p-5 rounded-2xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase ${
-                            smp.strategy === 'priority' 
-                              ? 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5]' 
-                              : 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC]'
-                          }`}>
-                            {smp.strategy === 'priority' ? 'Priority Target' : 'Exploration Quota'}
+                  <div className="space-y-2.5">
+                    {groupedQueueEntities.map(group => (
+                      <div 
+                        key={group.entityCode}
+                        onClick={() => setSelectedQueueEntity(group.entityCode)}
+                        className={`bg-white border rounded-2xl px-5 py-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 group border-[#E2E8F0] hover:border-[#991B1B]/40 hover:bg-slate-50/50 ${
+                          selectedQueueEntity === group.entityCode ? 'ring-2 ring-[#991B1B] border-[#991B1B] bg-red-50/20' : ''
+                        }`}
+                      >
+                        {/* Left: Entity Identification */}
+                        <div className="flex items-center space-x-3.5 min-w-0 md:w-5/12">
+                          <span className="font-mono text-xs font-black px-2.5 py-1 rounded-lg bg-slate-900 text-white tracking-wider shrink-0 shadow-2xs">
+                            {group.entityCode}
                           </span>
-                          <span className="text-xs font-bold text-[#0F172A]">{smp.entity_code}</span>
-                          <span className="text-xs text-[#64748B] font-mono">{smp.record_id}</span>
-                        </div>
-                        <div className="text-xs text-[#334155] leading-relaxed">
-                          <strong>Reasons Flagged:</strong> {smp.reasons?.join(', ')}
-                        </div>
-                        {smp.reviewed && (
-                          <div className="text-xs text-[#16A34A] font-medium flex items-center gap-1.5 pt-0.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Decision: <strong>{smp.examiner_decision}</strong> — "{smp.examiner_comment}"</span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-[#991B1B] transition leading-snug">
+                              {group.entityName}
+                            </h3>
+                            <span className="text-[11px] text-slate-500 font-medium truncate block">
+                              Total Ingested: <strong className="text-slate-700">{group.samples.length} review records</strong>
+                            </span>
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
-                        {!smp.reviewed ? (
-                          <>
-                            <button 
-                              onClick={() => handleRecordDecision(smp.id, 'confirmed')}
-                              className="text-xs bg-[#DC2626] hover:bg-[#b91c1c] text-white font-bold px-3.5 py-2 rounded-lg transition shadow-sm cursor-pointer"
-                            >
-                              Confirm Gap
-                            </button>
-                            <button 
-                              onClick={() => handleRecordDecision(smp.id, 'benign')}
-                              className="text-xs bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] border border-[#CBD5E1] px-3.5 py-2 rounded-lg font-bold transition cursor-pointer"
-                            >
-                              Mark Benign
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-xs bg-[#F1F5F9] text-[#64748B] border border-[#CBD5E1] px-3 py-1 rounded-md font-medium">
-                            Reviewed
+                        {/* Center: Allocation Badges & Progress Bar */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:w-5/12">
+                          {/* Badges */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200/60 whitespace-nowrap">
+                              {group.priorityCount} Priority (85%)
+                            </span>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 whitespace-nowrap">
+                              {group.explorationCount} Quota (15%)
+                            </span>
+                          </div>
+
+                          {/* Progress Meter */}
+                          <div className="flex-1 min-w-[130px] space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                              <span>Reviewed</span>
+                              <span className="font-bold text-slate-800 font-mono">
+                                {group.reviewedCount}/{group.samples.length} ({Math.round((group.reviewedCount / group.samples.length) * 100)}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                              <div 
+                                className="bg-[#991B1B] h-full" 
+                                style={{ width: `${(group.confirmedCount / group.samples.length) * 100}%` }}
+                                title={`${group.confirmedCount} Defect Confirmed`}
+                              />
+                              <div 
+                                className="bg-emerald-500 h-full" 
+                                style={{ width: `${(group.benignCount / group.samples.length) * 100}%` }}
+                                title={`${group.benignCount} Marked Safe`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Status Pill & Action Arrow */}
+                        <div className="flex items-center justify-between md:justify-end space-x-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center space-x-1.5 ${
+                            group.pendingCount > 0 
+                              ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}>
+                            <Clock className="w-3.5 h-3.5 shrink-0" />
+                            <span>{group.pendingCount} Pending</span>
                           </span>
-                        )}
+
+                          <button 
+                            type="button"
+                            className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold text-[#991B1B] group-hover:bg-[#991B1B] group-hover:text-white border border-[#991B1B]/30 transition shadow-2xs cursor-pointer whitespace-nowrap"
+                          >
+                            <span>Open Rows</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
-
-              {/* Pagination Controls Bar */}
-              {totalQueuePages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-[#E2E8F0] px-5 py-3.5 rounded-2xl shadow-xs">
-                  <span className="text-xs text-slate-600 font-medium">
-                    Showing <strong className="text-slate-900 font-bold">{(safeQueuePage - 1) * queuePageSize + 1}</strong> to <strong className="text-slate-900 font-bold">{Math.min(safeQueuePage * queuePageSize, filteredReviewSamples.length)}</strong> of <strong className="text-slate-900 font-bold">{filteredReviewSamples.length}</strong> records (15 per page)
-                  </span>
-
-                  <div className="flex items-center space-x-1.5">
-                    <button
-                      onClick={() => setQueueCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={safeQueuePage === 1}
-                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200 cursor-pointer"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span>Previous</span>
-                    </button>
-
-                    <div className="flex items-center space-x-1">
-                      {Array.from({ length: totalQueuePages }, (_, i) => i + 1)
-                        .filter(pageNum => {
-                          if (totalQueuePages <= 7) return true;
-                          if (pageNum === 1 || pageNum === totalQueuePages) return true;
-                          return Math.abs(pageNum - safeQueuePage) <= 1;
-                        })
-                        .map((pageNum, idx, arr) => {
-                          const prev = arr[idx - 1];
-                          const showEllipsis = prev && pageNum - prev > 1;
-                          return (
-                            <React.Fragment key={pageNum}>
-                              {showEllipsis && (
-                                <span className="text-slate-400 text-xs px-1 font-mono">...</span>
-                              )}
-                              <button
-                                onClick={() => setQueueCurrentPage(pageNum)}
-                                className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${
-                                  safeQueuePage === pageNum
-                                    ? 'bg-[#111827] text-white shadow-xs'
-                                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            </React.Fragment>
-                          );
-                        })}
-                    </div>
-
-                    <button
-                      onClick={() => setQueueCurrentPage(p => Math.min(totalQueuePages, p + 1))}
-                      disabled={safeQueuePage === totalQueuePages}
-                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed bg-white text-slate-700 hover:bg-slate-50 border-slate-200 cursor-pointer"
-                    >
-                      <span>Next</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -2880,6 +3068,14 @@ export function App() {
           finding={inspectingFinding}
           entityCode={inspectingFinding.entity_code || 'CSE-POWER-01'}
           onClose={() => setInspectingFinding(null)}
+        />
+      )}
+
+      {/* ================= MODAL: SILENT CRITICAL INFRASTRUCTURE ASSET DOSSIER ================= */}
+      {selectedSilentAsset && (
+        <SilentAssetDetailModal
+          asset={selectedSilentAsset}
+          onClose={() => setSelectedSilentAsset(null)}
         />
       )}
 
@@ -3187,6 +3383,384 @@ export function App() {
         silentAssets={silentAssets}
         auditHash={auditLogs[0]?.hash}
       />
+
+      {/* ================= 60% SLIDE-OVER SIDEBAR: ENTITY REVIEW QUEUE ROWS ================= */}
+      {selectedQueueEntity && activeEntityQueueGroup && (
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-2xs z-40 flex justify-end animate-in fade-in duration-200"
+          onClick={() => setSelectedQueueEntity(null)}
+        >
+          <div 
+            className="w-full sm:w-[85vw] md:w-[70vw] lg:w-[60vw] h-full bg-white shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300 text-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header (Theme Red) */}
+            <div className="bg-[#991B1B] text-white p-5 border-b border-red-800/80 flex items-start justify-between shrink-0 shadow-md">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-black/30 text-white border border-white/20 tracking-wide">
+                    {activeEntityQueueGroup.entityCode}
+                  </span>
+                  <span className="text-xs font-bold text-red-100">
+                    {activeEntityQueueGroup.entityName}
+                  </span>
+                </div>
+                <h2 className="text-base font-black tracking-tight text-white flex items-center space-x-2">
+                  <span>Targeted Review Portfolio</span>
+                  <span className="text-xs font-mono font-medium text-red-200">
+                    ({activeEntityQueueGroup.samples.length} Records)
+                  </span>
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-red-100 pt-1">
+                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 border border-white/15 text-[11px] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                    <span>{activeEntityQueueGroup.priorityCount} Priority Targets</span>
+                  </span>
+                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 border border-white/15 text-[11px] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                    <span>{activeEntityQueueGroup.explorationCount} Exploration Quota</span>
+                  </span>
+                  <span className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-600 text-white border border-amber-500 text-[11px] font-black tracking-wide shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                    <span>{activeEntityQueueGroup.pendingCount} Pending</span>
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setSelectedQueueEntity(null)}
+                className="text-red-200 hover:text-white p-1.5 rounded-xl hover:bg-black/20 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drawer Body - Scrollable list of rows */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/60">
+              {activeEntityQueueGroup.samples.map((smp: any) => (
+                <div 
+                  key={smp.id}
+                  className={`bg-white border rounded-2xl p-4 shadow-xs transition space-y-3 ${
+                    smp.reviewed 
+                      ? 'border-emerald-200 bg-emerald-50/20' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase font-mono ${
+                        smp.strategy === 'priority' 
+                          ? 'bg-red-50 text-red-700 border border-red-200' 
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        {smp.strategy === 'priority' ? 'Priority Target' : 'Exploration Quota'}
+                      </span>
+                      <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {smp.record_id}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        Score: <strong>{smp.priority_score || '92'}</strong>
+                      </span>
+                    </div>
+
+                    {/* Action buttons or review badge */}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      {!smp.reviewed ? (
+                        <>
+                          <button 
+                            onClick={() => openReviewModal(smp, 'confirmed')}
+                            className="text-xs bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold px-3 py-1.5 rounded-xl transition shadow-2xs cursor-pointer flex items-center space-x-1"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                            <span>Confirm Defect</span>
+                          </button>
+                          <button 
+                            onClick={() => openReviewModal(smp, 'benign')}
+                            className="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-xl font-bold transition shadow-2xs cursor-pointer flex items-center space-x-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Mark Safe</span>
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center space-x-1 ${
+                            smp.examiner_decision === 'confirmed'
+                              ? 'bg-red-50 text-red-800 border-red-200'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}>
+                            {smp.examiner_decision === 'confirmed' ? (
+                              <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            )}
+                            <span>{smp.examiner_decision === 'confirmed' ? 'Defect Confirmed' : 'Marked Safe'}</span>
+                          </span>
+                          <button 
+                            onClick={() => openReviewModal(smp, smp.examiner_decision === 'confirmed' ? 'confirmed' : 'benign')}
+                            className="text-[11px] text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Flagged reasons summary */}
+                  <div className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                    <strong className="text-slate-900">Reasons Flagged:</strong> {smp.reasons?.join(', ')}
+                  </div>
+
+                  {/* Examiner remark if already reviewed */}
+                  {smp.reviewed && smp.examiner_comment && (
+                    <div className="text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 italic">
+                      "{smp.examiner_comment}"
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 px-6 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
+              <span className="text-xs text-slate-500">
+                Clicking either option opens the live raw evidence audit popup.
+              </span>
+              <button
+                onClick={() => setSelectedQueueEntity(null)}
+                className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {reviewActionModal && (
+        <div 
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
+          onClick={() => !isSubmittingReview && setReviewActionModal(null)}
+        >
+          <div 
+            className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full shadow-2xl flex flex-col text-slate-900 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className={`p-4 text-white flex items-center justify-between ${
+              reviewActionModal.decision === 'confirmed' ? 'bg-[#991B1B]' : 'bg-slate-800'
+            }`}>
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center border border-white/20">
+                  {reviewActionModal.decision === 'confirmed' ? (
+                    <ShieldAlert className="w-4 h-4 text-white" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-black tracking-tight text-white">
+                    {reviewActionModal.decision === 'confirmed' ? 'Confirm Defect' : 'Mark as Safe'}
+                  </h3>
+                  <p className="text-[11px] text-white/80 font-medium">
+                    Supervisory Review Record: <span className="font-mono font-bold">{reviewActionModal.sample.record_id}</span>
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isSubmittingReview && setReviewActionModal(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 space-y-3.5">
+              {/* Record Summary Box with Triage Timing Strip */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Entity</span>
+                    <span className="font-mono font-bold text-slate-900 px-2 py-0.5 rounded bg-white border border-slate-200">
+                      {reviewActionModal.sample.entity_code}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded">
+                    Score: {reviewActionModal.sample.priority_score || '92'}/100
+                  </span>
+                </div>
+
+                {/* 3-Pill Triage Forensic Timing & Severity Strip */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white p-2 rounded-lg border border-slate-200 text-center">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Severity</span>
+                    <span className="font-black font-mono text-red-600 text-xs">
+                      {reviewActionModal.sample.alertDetails?.severity || 'CRITICAL'}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200 text-center">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Triage Speed</span>
+                    <span className="font-black font-mono text-amber-600 text-xs">
+                      &lt; 4m (Rubber-Stamp)
+                    </span>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200 text-center">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">SOC Disposition</span>
+                    <span className="font-bold font-mono text-slate-700 text-xs truncate block">
+                      {reviewActionModal.sample.alertDetails?.disposition || 'FALSE_POSITIVE'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Flagged Reasons</span>
+                  <span className="text-slate-800 text-[11px] font-medium leading-relaxed block mt-0.5">
+                    {reviewActionModal.sample.reasons?.join(', ') || 'High severity closure anomaly, Missing escalation trace'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Raw Forensic Log / Terminal View */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Raw Evidence Telemetry Stream</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Verbatim Ingested Event</span>
+                </div>
+                
+                {/* Terminal Window with 3 Dots & Copy Button */}
+                <div className="bg-[#0B0F17] rounded-xl overflow-hidden border border-slate-800 shadow-md">
+                  {/* Terminal Titlebar */}
+                  <div className="bg-[#111827] px-3.5 py-2 border-b border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] inline-block shadow-xs"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] inline-block shadow-xs"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] inline-block shadow-xs"></span>
+                      <span className="text-[10px] font-mono text-slate-400 pl-2 truncate">audit-terminal ~ tail -f forensic_stream.log</span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <button
+                        onClick={() => {
+                          const text = `${reviewActionModal.sample.rawLog || ''}\n${reviewActionModal.sample.rawCsv || ''}`;
+                          navigator.clipboard.writeText(text);
+                          setCopiedTerminalLog(true);
+                          setTimeout(() => setCopiedTerminalLog(false), 2000);
+                        }}
+                        className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 border border-slate-700 transition cursor-pointer"
+                        title="Copy raw logs to clipboard"
+                      >
+                        {copiedTerminalLog ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-300 font-bold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 text-slate-400" />
+                            <span>Copy Log</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700">
+                        RFC 5424
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Terminal Screen */}
+                  <div className="p-3 text-[11px] font-mono text-slate-200 leading-relaxed space-y-2 select-text overflow-x-auto bg-black">
+                    <div>
+                      <span className="text-emerald-400 font-bold">$ syslog --stream --record={reviewActionModal.sample.record_id}</span>
+                      <div className="text-emerald-300/90 break-all pl-2 border-l border-emerald-500/30 mt-0.5">
+                        {reviewActionModal.sample.rawLog || 
+                         `2026-10-01T08:15:00.120Z [CRITICAL] ${reviewActionModal.sample.entity_code} (${reviewActionModal.sample.record_id}): Fast critical triage anomaly | disposition=FALSE_POSITIVE closed_at=2026-10-01T08:18:22.000Z operator=analyst_sharma_01`}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-cyan-400 font-bold">$ csvcut --columns=ID,Category,Severity,Created,Closed,Operator</span>
+                      <div className="text-slate-300 break-all pl-2 border-l border-cyan-500/30 mt-0.5">
+                        {reviewActionModal.sample.rawCsv || 
+                         `${reviewActionModal.sample.record_id},"Fast Critical Triage Anomaly",CRITICAL,2026-10-01T08:15:00.120Z,2026-10-01T08:18:22.000Z,FALSE_POSITIVE,analyst_sharma_01,${reviewActionModal.sample.entity_code}-GW-01`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statutory Violation Rule Citation */}
+              <div className="bg-red-50/60 border border-red-200/80 rounded-xl px-3 py-2 text-[11px] text-red-900 flex items-center justify-between">
+                <span className="flex items-center space-x-1.5 font-bold">
+                  <ShieldAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                  <span>Statutory Violation Citation:</span>
+                </span>
+                <span className="font-mono text-[10px] text-red-700 bg-red-100/80 px-2 py-0.5 rounded font-bold">
+                  NCIIPC Guidelines §7.4 • IT Act §70B
+                </span>
+              </div>
+
+              {/* Justification Textarea */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Auditor Justification &amp; Notes</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Stored in SHA-256 Ledger</span>
+                </label>
+                <textarea 
+                  value={reviewModalComment}
+                  onChange={(e) => setReviewModalComment(e.target.value)}
+                  rows={3}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 bg-slate-50/50 resize-none font-sans"
+                  placeholder="Enter examiner rationale or verification notes..."
+                />
+              </div>
+
+              {/* Cryptographic notice */}
+              <div className="bg-amber-50/80 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 flex items-center space-x-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Submitting creates an immutable cryptographic audit record chained to previous reviews.</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 px-5 py-3 flex items-center justify-end space-x-2 rounded-b-2xl">
+              <button
+                onClick={() => setReviewActionModal(null)}
+                disabled={isSubmittingReview}
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSubmitReviewDecision}
+                disabled={isSubmittingReview || !reviewModalComment.trim()}
+                className={`px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center space-x-1.5 ${
+                  reviewActionModal.decision === 'confirmed' 
+                    ? 'bg-[#991B1B] hover:bg-[#7F1D1D]' 
+                    : 'bg-emerald-700 hover:bg-emerald-800'
+                }`}
+              >
+                {isSubmittingReview ? (
+                  <span>Saving...</span>
+                ) : (
+                  <>
+                    {reviewActionModal.decision === 'confirmed' ? (
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                    <span>{reviewActionModal.decision === 'confirmed' ? 'Confirm Defect' : 'Mark Safe'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

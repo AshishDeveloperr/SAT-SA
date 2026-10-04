@@ -52,23 +52,76 @@ aside::-webkit-scrollbar-thumb:hover {
 }
 
 /* ==========================================================================
-   PRINT STYLES FOR STATUTORY ASSESSMENT REPORT (FORM SAR-01)
+   PRINT STYLES FOR STATUTORY ASSESSMENT REPORT (FORM SAR-01) & PEER COMPARISONS
    ========================================================================== */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 15mm;
+    margin: 10mm 12mm;
   }
 
-  /* 1. When SAR report is being printed, completely hide the application UI */
+  /* Universal resets for print to allow natural multi-page pagination */
+  html,
+  body,
+  #root,
+  #root > div,
+  .console-layout-wrapper,
+  div:has(> aside),
+  main,
+  .peer-comparison-container {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    position: static !important;
+    float: none !important;
+  }
+
+  /* In print mode, prevent overflow clipping from stopping page breaks */
+  body:not(.sar-modal-open) .overflow-hidden,
+  body:not(.sar-modal-open) .overflow-x-auto,
+  body:not(.sar-modal-open) .overflow-y-auto {
+    overflow: visible !important;
+  }
+
+  /* Always hide sidebar, header, and screen-only elements in all print views */
+  aside,
+  header,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Ensure SVG graphics don't overflow the printable paper width */
+  svg {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Prevent page-break splits across printed sections */
+  .sar-avoid-break,
+  .print-avoid-break,
+  .break-inside-avoid,
+  .print\:break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 1. When SAR report modal is specifically being printed, hide root application */
   body.sar-modal-open #root,
   body.sar-modal-open > *:not(#statutory-report-modal) {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* 2. Reset html & body so the browser print engine paginates naturally across multiple pages */
-  html,
+  /* 2. Reset html & body for SAR modal */
   body.sar-modal-open {
     height: auto !important;
     min-height: auto !important;

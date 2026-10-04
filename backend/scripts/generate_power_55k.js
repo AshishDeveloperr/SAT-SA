@@ -42,12 +42,13 @@ function escapeCsv(val) {
 }
 
 // 1. 24 Authentic Critical Power Grid & Energy Transmission Assets
-// (RTU-SUBSTATION-ALPHA-400KV & RTU-SUBSTATION-BETA-220KV have last_seen >40 days ago to trigger NS-01)
+// (Four Purdue L1/L2 critical OT systems have last_seen >10 days ago with organic variance 42d, 28d, 19d, 13d to trigger NS-01)
 const ASSETS = [
-  { id: 'RTU-SUBSTATION-ALPHA-400KV', name: 'Northern Grid 400kV Substation Alpha RTU', type: 'SCADA_RTU', criticality: 5, ip: '10.240.10.15', vlan: 'VLAN-101-OT-CONTROL', os: 'ABB RTU560 Rel 13.4.1', lastSeen: '2026-08-20T04:15:00.000Z' },
-  { id: 'RTU-SUBSTATION-BETA-220KV', name: 'Northern Grid 220kV Substation Beta RTU', type: 'SCADA_RTU', criticality: 5, ip: '10.240.20.15', vlan: 'VLAN-102-OT-CONTROL', os: 'GE D400 Substation Gateway v7.2', lastSeen: '2026-08-22T11:30:00.000Z' },
-  { id: 'PLC-TURBINE-GEN-01', name: 'Turbine Speed Governor PLC Unit 1', type: 'PLC_CONTROLLER', criticality: 5, ip: '10.240.10.22', vlan: 'VLAN-105-SAFETY-SIS', os: 'Siemens S7-1500 v2.9', lastSeen: '2026-08-24T09:12:00.000Z' },
-  { id: 'EMS-SCADA-CORE-01', name: 'Northern Regional Energy Management System Gateway 01', type: 'EMS_SERVER', criticality: 5, ip: '10.240.1.10', vlan: 'VLAN-100-EMS-CORE', os: 'Red Hat Enterprise Linux 8.8 (Hardened)', lastSeen: '2026-10-02T22:30:00.000Z' },
+  { id: 'RTU-SUBSTATION-ALPHA-400KV', name: 'Northern Grid 400kV Substation Alpha RTU', type: 'Purdue L1 SCADA RTU', criticality: 1, ip: '10.240.10.15', vlan: 'VLAN-101-OT-CONTROL', os: 'ABB RTU560 Rel 13.4.1', lastSeen: '2026-08-20T04:15:00.000Z' },
+  { id: 'RTU-SUBSTATION-BETA-220KV', name: 'Northern Grid 220kV Substation Beta RTU', type: 'Purdue L2 Grid Gateway', criticality: 1, ip: '10.240.20.15', vlan: 'VLAN-102-OT-CONTROL', os: 'GE D400 Substation Gateway v7.2', lastSeen: '2026-09-04T11:30:00.000Z' },
+  { id: 'PLC-TURBINE-GEN-01', name: 'Turbine Speed Governor PLC Unit 1', type: 'Purdue L1 Protection PLC', criticality: 1, ip: '10.240.10.22', vlan: 'VLAN-105-SAFETY-SIS', os: 'Siemens S7-1500 v2.9', lastSeen: '2026-09-13T09:12:00.000Z' },
+  { id: 'HMI-SCADA-SUPER-01', name: 'Northern Grid Central Area Supervisory HMI', type: 'Purdue L2 Control HMI', criticality: 1, ip: '10.240.10.33', vlan: 'VLAN-110-OPERATOR-HMI', os: 'Wonderware InTouch SCADA', lastSeen: '2026-09-19T14:00:00.000Z' },
+  { id: 'EMS-SCADA-CORE-01', name: 'Northern Regional Energy Management System Gateway 01', type: 'EMS_SERVER', criticality: 1, ip: '10.240.1.10', vlan: 'VLAN-100-EMS-CORE', os: 'Red Hat Enterprise Linux 8.8 (Hardened)', lastSeen: '2026-10-02T22:30:00.000Z' },
   { id: 'EMS-SCADA-CORE-02', name: 'Northern Regional Energy Management System Backup Gateway 02', type: 'EMS_SERVER', criticality: 5, ip: '10.240.1.11', vlan: 'VLAN-100-EMS-CORE', os: 'Red Hat Enterprise Linux 8.8 (Hardened)', lastSeen: '2026-10-02T22:30:00.000Z' },
   { id: 'OT-FW-DMZ-SUB-01', name: 'Substation Alpha Boundary Industrial Firewall', type: 'OT_FIREWALL', criticality: 4, ip: '10.240.1.1', vlan: 'DMZ-PERIMETER', os: 'FortiOS Rugged 7.2.5', lastSeen: '2026-10-02T22:15:00.000Z' },
   { id: 'OT-FW-DMZ-SUB-02', name: 'Substation Beta Boundary Industrial Firewall', type: 'OT_FIREWALL', criticality: 4, ip: '10.240.1.2', vlan: 'DMZ-PERIMETER', os: 'FortiOS Rugged 7.2.5', lastSeen: '2026-10-02T22:15:00.000Z' },

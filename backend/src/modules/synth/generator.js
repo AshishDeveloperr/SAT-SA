@@ -174,17 +174,30 @@ export async function generateSyntheticData() {
 
     for (let i = 1; i <= 12; i++) {
       const isCritical = i <= 4;
-      const assetType = isPowerOutlier && isCritical ? 'SCADA_CONTROLLER' : (isCritical ? 'ACTIVE_DIRECTORY' : 'EDGE_ROUTER');
-      const criticality = isCritical ? 5 : 2;
+      let assetType = isCritical ? 'ACTIVE_DIRECTORY' : 'EDGE_ROUTER';
+      let assetName = `${ent.code} ${assetType.replace('_', ' ')} ${i}`;
+      let lastSeenDaysAgo = Math.floor(Math.random() * 2);
 
-      // In CSE-POWER-01, SCADA assets AST-01..04 have had zero telemetry for 42 days (Silent Critical Asset NS-01)
-      const lastSeenDaysAgo = isPowerOutlier && isCritical ? 42 : Math.floor(Math.random() * 2);
+      if (isPowerOutlier && isCritical) {
+        const powerSilentConfig = [
+          { type: 'Purdue L1 SCADA RTU', name: 'Substation Alpha 400kV SCADA RTU', days: 42 },
+          { type: 'Purdue L1 Protection PLC', name: 'Turbine Feeder Line Protection PLC', days: 28 },
+          { type: 'Purdue L2 Control HMI', name: 'Control Room Area Supervisory HMI', days: 19 },
+          { type: 'Purdue L2 Grid Gateway', name: 'Substation Beta D400 Telemetry Gateway', days: 13 }
+        ];
+        const cfg = powerSilentConfig[i - 1];
+        assetType = cfg.type;
+        assetName = `${ent.code} ${cfg.name}`;
+        lastSeenDaysAgo = cfg.days;
+      }
+
+      const criticality = isCritical ? 5 : 2;
 
       const asset = {
         id: `ast_${ent.code}_${i}`,
         entity_id: ent.id,
         external_id: `AST-${ent.code.replace('CSE-', '')}-${String(i).padStart(2, '0')}`,
-        name: `${ent.code} ${assetType.replace('_', ' ')} ${i}`,
+        name: assetName,
         type: assetType,
         criticality: criticality,
         environment: 'PRODUCTION',
