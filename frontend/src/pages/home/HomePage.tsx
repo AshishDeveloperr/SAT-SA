@@ -4,6 +4,7 @@ import { ProblemSection } from './components/ProblemSection';
 import { SolutionSection } from './components/SolutionSection';
 import { ArchitectureSection } from './components/ArchitectureSection';
 import { IntegrityChainSection } from './components/IntegrityChainSection';
+import { BenchmarkSection } from './components/BenchmarkSection';
 import { ValidationSection } from './components/ValidationSection';
 import { StackSection } from './components/StackSection';
 import { DeploySection } from './components/DeploySection';
@@ -36,7 +37,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenConsole, onOpenScenari
       {/* 5. Cryptographic Hash Chaining & Tamper-Proof Audit Section */}
       <IntegrityChainSection />
 
-      {/* 6. Empirical Validation Report vs Random Baseline */}
+      {/* 6. Empirical Scale & NCIIPC Problem Scope Benchmarks (500K+ Logs & Air-Gapped AI) */}
+      <BenchmarkSection />
+
+      {/* 7. Empirical Validation Report vs Random Baseline */}
       <ValidationSection />
 
       {/* 7. Tech Stack Section */}

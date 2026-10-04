@@ -2,21 +2,14 @@ import React, { useState } from 'react';
 import { Terminal, Copy, Check, Lock, Play } from 'lucide-react';
 
 export const DeploySection: React.FC = () => {
-  const [copied, setCopied] = useState(false);
+  const [copiedStep, setCopiedStep] = useState<string | null>(null);
 
-  const command = `# 1. Clone repository in air-gapped machine
-git clone <repo-url> && cd SIH2
-
-# 2. Start PostgreSQL, Analytics API, and Nginx Gateway
-docker compose up -d --build
-
-# 3. Access Supervisory Dashboard
-# URL: http://localhost`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(command);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    if (text.includes('build')) setCopiedStep('docker');
+    else if (text.includes('health')) setCopiedStep('health');
+    else setCopiedStep('url');
+    setTimeout(() => setCopiedStep(null), 2000);
   };
 
   return (
@@ -32,49 +25,148 @@ docker compose up -d --build
           <h2 className="landing-h2" style={{ marginBottom: '0.75rem' }}>
             Zero-internet deployment in under 60 seconds
           </h2>
-          <p className="landing-lead" style={{ marginBottom: 0 }}>
-            Bundled with self-contained dependencies and local database seeds. Runs cleanly on air-gapped laptops or server racks.
+          <p className="landing-lead" style={{ marginBottom: 0, lineHeight: 1.75, color: '#0F172A' }}>
+            Bundled with{' '}
+            <span className="highlight-badge-red">
+              self-contained dependencies
+            </span>{' '}
+            and local database seeds. Runs cleanly on{' '}
+            <span className="highlight-badge-dark">
+              air-gapped laptops
+            </span>{' '}
+            or secure server racks.
           </p>
         </div>
 
-        {/* Code Terminal Box */}
-        <div style={{ background: '#0B0F17', border: '1px solid #1E293B', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
-          <div style={{ background: '#080C14', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', justifyItems: 'space-between', borderBottom: '1px solid #1E293B' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444' }}></div>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B' }}></div>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }}></div>
-              <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', marginLeft: '8px' }}>
-                terminal — airgap-deploy.sh
-              </span>
+        {/* Docker Quickstart Cards & Commands (No dark terminal, light cards) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+          
+          {/* Step 1: Docker Compose Launch */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: '14px', padding: '1.4rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA', padding: '2px 8px', borderRadius: '4px' }}>
+                  STEP 01
+                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
+                  Start All 4 Containers (Docker)
+                </span>
+              </div>
+              <button
+                onClick={() => handleCopy('docker compose up -d --build')}
+                style={{
+                  marginLeft: 'auto',
+                  background: copiedStep === 'docker' ? '#DCFCE7' : '#F1F5F9',
+                  border: copiedStep === 'docker' ? '1px solid #BBF7D0' : '1px solid #CBD5E1',
+                  color: copiedStep === 'docker' ? '#166534' : '#0F172A',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}
+              >
+                {copiedStep === 'docker' ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copiedStep === 'docker' ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
 
-            <button
-              onClick={handleCopy}
-              style={{
-                marginLeft: 'auto',
-                background: '#1E293B',
-                border: '1px solid #334155',
-                color: '#CBD5E1',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.75rem'
-              }}
-            >
-              {copied ? <Check size={14} color="#EF4444" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied' : 'Copy Commands'}</span>
-            </button>
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: '#0F172A', fontWeight: 700, marginBottom: '0.75rem' }}>
+              <code>docker compose up -d --build</code>
+            </div>
+
+            <div style={{ fontSize: '0.74rem', color: '#64748B', lineHeight: 1.5 }}>
+              Spins up <strong style={{ color: '#0F172A' }}>satsa-gateway</strong> (Nginx:80), <strong style={{ color: '#0F172A' }}>satsa-api</strong> (Express:5000), <strong style={{ color: '#0F172A' }}>satsa-db</strong> (PostgreSQL 16), and <strong style={{ color: '#0F172A' }}>satsa-ollama</strong> (Air-Gap LLM:11434).
+            </div>
           </div>
 
-          <div style={{ padding: '1.5rem', overflowX: 'auto' }}>
-            <pre style={{ margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: '#E2E8F0', lineHeight: 1.6 }}>
-              {command}
-            </pre>
+          {/* Step 2: Verification & Healthcheck */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: '14px', padding: '1.4rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#EDE9FE', color: '#6D28D9', border: '1px solid #DDD6FE', padding: '2px 8px', borderRadius: '4px' }}>
+                  STEP 02
+                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
+                  Verify Health &amp; Ingestion Ready
+                </span>
+              </div>
+              <button
+                onClick={() => handleCopy('docker compose ps && curl -s http://localhost:5000/health')}
+                style={{
+                  marginLeft: 'auto',
+                  background: copiedStep === 'health' ? '#DCFCE7' : '#F1F5F9',
+                  border: copiedStep === 'health' ? '1px solid #BBF7D0' : '1px solid #CBD5E1',
+                  color: copiedStep === 'health' ? '#166534' : '#0F172A',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}
+              >
+                {copiedStep === 'health' ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copiedStep === 'health' ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: '#0F172A', fontWeight: 700, marginBottom: '0.75rem' }}>
+              <code>docker compose ps && curl -s http://localhost:5000/health</code>
+            </div>
+
+            <div style={{ fontSize: '0.74rem', color: '#64748B', lineHeight: 1.5 }}>
+              Runs zero-network health checks across SQLite/PG databases and confirms offline 11 detector rule registry readiness.
+            </div>
           </div>
+
+          {/* Step 3: Access Workbench */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: '14px', padding: '1.4rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0', padding: '2px 8px', borderRadius: '4px' }}>
+                  STEP 03
+                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
+                  Open Supervisory Workbench
+                </span>
+              </div>
+              <button
+                onClick={() => handleCopy('http://localhost:80')}
+                style={{
+                  marginLeft: 'auto',
+                  background: copiedStep === 'url' ? '#DCFCE7' : '#F1F5F9',
+                  border: copiedStep === 'url' ? '1px solid #BBF7D0' : '1px solid #CBD5E1',
+                  color: copiedStep === 'url' ? '#166534' : '#0F172A',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}
+              >
+                {copiedStep === 'url' ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copiedStep === 'url' ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: '#0F172A', fontWeight: 700, marginBottom: '0.75rem' }}>
+              <code>http://localhost (or http://localhost:5173 in dev)</code>
+            </div>
+
+            <div style={{ fontSize: '0.74rem', color: '#64748B', lineHeight: 1.5 }}>
+              Ready for immediate periodic batch drop ingestion, supervisory queue triage, and Section 65B tamper-proof audit generation.
+            </div>
+          </div>
+
         </div>
 
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Shield, Lock, Activity, EyeOff, Scale, TrendingUp, Zap } from 'lucide-react';
+import { ArrowUpRight, LayoutDashboard } from 'lucide-react';
 
 interface HeroSectionProps {
   onOpenConsole?: () => void;
@@ -100,115 +100,61 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsole, onOpenS
           .
         </p>
 
-        {/* Action buttons */}
+        {/* Action buttons (Exactly two: Dashboard & GitHub) */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '3.5rem' }}>
+          {/* 1. Dashboard Button */}
           <button
             onClick={onOpenConsole}
             style={{
-              padding: '0.875rem 1.75rem',
+              padding: '0.65rem 1.6rem',
               backgroundColor: '#991B1B',
               color: '#FFFFFF',
               fontWeight: 700,
-              borderRadius: '0.5rem',
+              borderRadius: '9999px',
               border: 'none',
-              fontSize: '0.875rem',
+              fontSize: '0.9rem',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.6rem',
               cursor: 'pointer',
-              boxShadow: '0 0 15px rgba(153, 27, 27, 0.35)',
+              boxShadow: '0 4px 14px rgba(153, 27, 27, 0.35)',
               transition: 'all 0.2s ease'
             }}
           >
-            Launch Supervisory Console
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
             <ArrowUpRight size={16} />
           </button>
 
-          {onOpenScenarioStudio && (
-            <button
-              onClick={onOpenScenarioStudio}
-              style={{
-                padding: '0.875rem 1.5rem',
-                backgroundColor: '#0F172A',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                borderRadius: '0.5rem',
-                border: '1px solid #1E293B',
-                fontSize: '0.875rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                boxShadow: '0 0 12px rgba(15, 23, 42, 0.3)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Zap size={16} color="#EF4444" />
-              "What-If" Scenario Studio
-            </button>
-          )}
-
+          {/* 2. GitHub Button */}
           <a
-            href="#architecture"
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              padding: '0.875rem 1.5rem',
-              backgroundColor: '#FFFFFF',
-              color: '#0F172A',
-              fontWeight: 600,
-              borderRadius: '0.5rem',
-              border: '1px solid #CBD5E1',
+              padding: '0.65rem 1.5rem',
+              backgroundColor: '#0F172A',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              borderRadius: '9999px',
+              border: '1px solid #1E293B',
+              fontSize: '0.9rem',
               textDecoration: 'none',
-              fontSize: '0.875rem',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              gap: '0.6rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(15, 23, 42, 0.25)',
               transition: 'all 0.2s ease'
             }}
           >
-            Inspect Architecture &amp; Methodology
+            {/* GitHub Octocat SVG */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+            <span>GitHub</span>
           </a>
         </div>
-
-        {/* 4 Proof Stat Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Monitored Entities</span>
-              <Shield size={18} color="#991B1B" />
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A' }}>5 Sectors</div>
-            <div style={{ fontSize: '0.75rem', color: '#991B1B', fontWeight: 600, marginTop: '2px' }}>Energy, BFSI, Telco, Defense, Health</div>
-          </div>
-
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Air-Gap Security</span>
-              <Lock size={18} color="#991B1B" />
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A' }}>100% Offline</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>Zero cloud or remote model calls</div>
-          </div>
-
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Examiner Lift</span>
-              <TrendingUp size={18} color="#991B1B" />
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#991B1B' }}>3.42× Gain</div>
-            <div style={{ fontSize: '0.75rem', color: '#991B1B', fontWeight: 600, marginTop: '2px' }}>vs Random manual review sampling</div>
-          </div>
-
-          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase' }}>Supervisory Detectors</span>
-              <Scale size={18} color="#D97706" />
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A' }}>10 Rules</div>
-            <div style={{ fontSize: '0.75rem', color: '#D97706', fontWeight: 600, marginTop: '2px' }}>Execution gaps &amp; negative space</div>
-          </div>
-        </div>
-
       </div>
     </section>
   );

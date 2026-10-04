@@ -57,9 +57,25 @@ services:
     networks:
       - satsa-network
 
+  # 4. Air-Gapped Local LLM Inference Engine (Ollama / Qwen2.5:3B)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: satsa-ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    ports:
+      - "11434:11434"
+    volumes:
+      - satsa-ollama-data:/root/.ollama
+    networks:
+      - satsa-network
+
 networks:
   satsa-network:
     internal: false # set to true in strictly isolated air-gap host
 
 volumes:
   satsa-pgdata:
+  satsa-ollama-data:
+

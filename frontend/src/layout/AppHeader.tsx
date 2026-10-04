@@ -1,8 +1,8 @@
 import React from 'react';
 import {
   Shield,
-  Zap,
-  ArrowRight
+  ArrowUpRight,
+  Github
 } from 'lucide-react';
 
 interface AppHeaderProps {
@@ -14,51 +14,120 @@ interface AppHeaderProps {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
   statusMessage,
-  onOpenScenarioStudio,
   onLaunchConsole,
   onNavigateHome
 }) => {
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <header className="bg-[#111827] text-white border-b border-slate-700/60 sticky top-0 z-40 px-6 py-3.5 shadow-md flex-shrink-0">
-      <div className="w-full mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-3.5 cursor-pointer" onClick={onNavigateHome}>
-          <div className="bg-[#991B1B]/15 p-2.5 rounded-xl border border-[#991B1B]/40 text-[#EF4444] shadow-[0_0_12px_rgba(153,27,27,0.3)]">
-            <Shield className="w-6 h-6 text-[#EF4444]" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-xl tracking-tight text-white font-sans">
-                SAT<span className="text-[#EF4444]">-SA</span>
-              </span>
+    <header className="bg-[#0B0F17] text-white border-b border-slate-800/80 sticky top-0 z-50 px-4 md:px-8 py-2.5 shadow-md flex-shrink-0 transition-all">
+      <div className="max-w-[76.8rem] w-full mx-auto flex items-center justify-between gap-3">
+        
+        {/* Left: SIH2026 Badge + SAT-SA Logo */}
+        <div 
+          className="flex items-center space-x-2.5 cursor-pointer select-none group" 
+          onClick={onNavigateHome}
+          title="Go to Home"
+        >
+          {/* SIH 2026 Micro Card Badge */}
+          <div className="flex items-center space-x-1.5 bg-white px-2 py-1 rounded-lg border border-slate-200/90 shadow-2xs transition group-hover:scale-102">
+            <div className="w-5 h-5 rounded-full bg-linear-to-tr from-amber-500 via-emerald-500 to-indigo-600 flex items-center justify-center p-0.5 shadow-2xs">
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                <span className="text-[8px] font-black leading-none text-slate-900">SIH</span>
+              </div>
             </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-[7.5px] font-black uppercase tracking-tight text-slate-800">SMART INDIA</span>
+              <span className="text-[6.5px] font-bold text-slate-500">HACKATHON 2026</span>
+            </div>
+          </div>
+
+          {/* SAT-SA Brand Name */}
+          <div className="flex items-center space-x-1.5 pl-1">
+            <span className="font-extrabold text-lg tracking-tight text-white font-sans">
+              SAT<span className="text-[#EF4444]">-SA</span>
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        {/* Center: Dark Rounded Capsule Pill Menu for Sections */}
+        <nav className="hidden lg:flex items-center space-x-1 bg-[#131B29]/95 border border-slate-800 px-3 py-1.5 rounded-full shadow-inner">
+          <button
+            onClick={() => scrollToSection('problem')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            Problem
+          </button>
+          <button
+            onClick={() => scrollToSection('solution')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            Solution
+          </button>
+          <button
+            onClick={() => scrollToSection('architecture')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            Architecture
+          </button>
+          <button
+            onClick={() => scrollToSection('benchmarks')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            Benchmarks
+          </button>
+          <button
+            onClick={() => scrollToSection('validation')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            Validation
+          </button>
+          <button
+            onClick={() => scrollToSection('deploy')}
+            className="px-3.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+          >
+            CLI
+          </button>
+        </nav>
+
+        {/* Right: Dashboard Button & Green GitHub Button */}
+        <div className="flex items-center space-x-2 shrink-0">
           {statusMessage && (
-            <span className="text-xs bg-[#991B1B]/20 text-[#FCA5A5] border border-[#991B1B]/40 px-3 py-1 rounded-lg font-medium animate-pulse">
+            <span className="hidden xl:inline-block text-[11px] bg-red-950/60 text-red-300 border border-red-800/60 px-2.5 py-0.5 rounded-md font-medium">
               {statusMessage}
             </span>
           )}
 
-          <div className="flex items-center space-x-2.5">
-            <button 
-              onClick={onOpenScenarioStudio}
-              className="flex items-center space-x-1.5 text-xs bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-700/60 px-3.5 py-2 rounded-lg font-bold shadow-sm transition hover:scale-105 active:scale-95"
-            >
-              <Zap className="w-3.5 h-3.5 text-[#EF4444]" />
-              <span>What-If Studio</span>
-            </button>
-            <button 
-              onClick={onLaunchConsole}
-              className="flex items-center space-x-2 text-xs bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(153,27,27,0.35)] transition-all hover:scale-105 active:scale-95"
-            >
-              <span>Launch Supervisory Console</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* White Pill Button: Dashboard */}
+          <button 
+            onClick={onLaunchConsole}
+            className="flex items-center space-x-1.5 text-xs font-bold bg-white hover:bg-slate-100 text-slate-900 px-4 py-1.5 rounded-full shadow-sm transition hover:scale-102 active:scale-95 cursor-pointer"
+          >
+            <span>Dashboard</span>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-900 stroke-[2.5]" />
+          </button>
+
+          {/* Theme Red Pill Button: GitHub */}
+          <a
+            href="https://github.com/AshishDeveloperr/SIH2"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1.5 text-xs font-bold bg-[#991B1B] hover:bg-[#7F1D1D] text-white px-3.5 py-1.5 rounded-full shadow-sm transition hover:scale-102 active:scale-95 cursor-pointer"
+            title="View Source on GitHub"
+          >
+            <Github className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+            <span>GitHub</span>
+            <ArrowUpRight className="w-3 h-3 text-white stroke-[2.5]" />
+          </a>
         </div>
+
       </div>
     </header>
   );
 };
+

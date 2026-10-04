@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { 
   Scale, EyeOff, Layers, FileText, Database, HardDrive, 
   Cpu, ShieldCheck, ArrowRight, Timer, GitPullRequest, 
-  CheckSquare, Copy, BellOff, Radar, Activity, ChevronRight
+  CheckSquare, Copy, BellOff, Radar, Activity, ChevronRight,
+  Sparkles, Bot, Terminal
 } from 'lucide-react';
 
 export const SolutionSection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'execution' | 'negative' | 'dimensions'>('execution');
+  const [activeTab, setActiveTab] = useState<'execution' | 'negative' | 'copilot' | 'dimensions'>('execution');
 
   return (
     <section id="solution" className="landing-section bg-canvas">
@@ -21,12 +22,20 @@ export const SolutionSection: React.FC = () => {
           <h2 className="landing-h2" style={{ marginBottom: '1rem', whiteSpace: 'nowrap' }}>
             How SAT-SA solves the supervisory dilemma
           </h2>
-          <p className="landing-lead" style={{ marginBottom: 0, maxWidth: '58rem' }}>
+          <p className="landing-lead" style={{ marginBottom: 0, maxWidth: '62rem', lineHeight: 1.75, color: '#0F172A' }}>
             Rather than serving as another operational SIEM, SAT-SA operates as a{' '}
-            <span style={{ backgroundColor: '#991B1B', color: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+            <span className="highlight-badge-red">
               supervisory audit workbench
             </span>
-            . It correlates periodic alert metadata, case logs, and asset registries to surface true operational posture.
+            . It correlates periodic{' '}
+            <span className="highlight-badge-dark">
+              alert metadata, case logs, and asset registries
+            </span>{' '}
+            to surface{' '}
+            <span className="highlight-badge-red">
+              true operational posture
+            </span>
+            .
           </p>
         </div>
 
@@ -41,50 +50,50 @@ export const SolutionSection: React.FC = () => {
             boxShadow: '0 4px 16px -4px rgba(15,23,42,0.06)'
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr auto 1fr', alignItems: 'center', gap: '0.85rem' }}>
             
             {/* 1. Inputs Multi-Card Block */}
-            <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: '14px', padding: '1rem 1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.65rem' }}>
-                1. Ingested Evidence Feeds
+            <div style={{ background: '#FFFFFF', border: '1.5px solid #CBD5E1', borderRadius: '14px', padding: '1rem 1.1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.55rem' }}>
+                1. Evidence Ingestion
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '6px 10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ background: '#E0F2FE', padding: '4px', borderRadius: '6px', color: '#0284C7' }}>
-                      <FileText size={15} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '5px 8px', borderRadius: '7px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ background: '#E0F2FE', padding: '3px', borderRadius: '5px', color: '#0284C7' }}>
+                      <FileText size={13} />
                     </div>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>Alert Metadata</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>Alert Metadata</span>
                   </div>
-                  <span style={{ fontSize: '0.68rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>SIEM / EDR</span>
+                  <span style={{ fontSize: '0.64rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>SIEM / EDR</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '6px 10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ background: '#E0F2FE', padding: '4px', borderRadius: '6px', color: '#0284C7' }}>
-                      <Database size={15} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '5px 8px', borderRadius: '7px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ background: '#E0F2FE', padding: '3px', borderRadius: '5px', color: '#0284C7' }}>
+                      <Database size={13} />
                     </div>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>Case & Triage Notes</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>Case & Notes</span>
                   </div>
-                  <span style={{ fontSize: '0.68rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>ITSM / SOAR</span>
+                  <span style={{ fontSize: '0.64rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>ITSM / SOAR</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '6px 10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ background: '#E0F2FE', padding: '4px', borderRadius: '6px', color: '#0284C7' }}>
-                      <HardDrive size={15} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '5px 8px', borderRadius: '7px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ background: '#E0F2FE', padding: '3px', borderRadius: '5px', color: '#0284C7' }}>
+                      <HardDrive size={13} />
                     </div>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A' }}>Asset Registries</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>Asset Registries</span>
                   </div>
-                  <span style={{ fontSize: '0.68rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>OT / SCADA</span>
+                  <span style={{ fontSize: '0.64rem', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', fontWeight: 600 }}>OT / SCADA</span>
                 </div>
               </div>
             </div>
 
             {/* Transform Arrow 1 */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#991B1B' }}>
-              <div style={{ background: '#FEE2E2', padding: '8px', borderRadius: '50%', color: '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ArrowRight size={22} strokeWidth={2.5} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#991B1B' }}>
+              <div style={{ background: '#FEE2E2', padding: '6px', borderRadius: '50%', color: '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ArrowRight size={18} strokeWidth={2.5} />
               </div>
             </div>
 
@@ -94,7 +103,7 @@ export const SolutionSection: React.FC = () => {
                 background: 'linear-gradient(145deg, #0F172A 0%, #1E293B 100%)', 
                 color: '#FFFFFF', 
                 borderRadius: '14px', 
-                padding: '1.25rem 1.4rem', 
+                padding: '1.1rem 1.15rem', 
                 border: '1px solid #334155',
                 boxShadow: '0 8px 24px -4px rgba(15,23,42,0.25)',
                 display: 'flex',
@@ -103,34 +112,76 @@ export const SolutionSection: React.FC = () => {
                 height: '100%'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.75rem' }}>
-                <div style={{ background: 'rgba(239, 68, 68, 0.18)', border: '1px solid #EF4444', padding: '7px', borderRadius: '8px', color: '#F87171' }}>
-                  <Cpu size={22} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.65rem' }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.18)', border: '1px solid #EF4444', padding: '6px', borderRadius: '8px', color: '#F87171' }}>
+                  <Cpu size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.01em', color: '#FFFFFF' }}>SAT-SA Engine Core</div>
-                  <div style={{ fontSize: '0.7rem', color: '#94A3B8', fontWeight: 600 }}>Supervisory Workbench</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, letterSpacing: '0.01em', color: '#FFFFFF' }}>SAT-SA Engine Core</div>
+                  <div style={{ fontSize: '0.66rem', color: '#94A3B8', fontWeight: 600 }}>Supervisory Workbench</div>
                 </div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '8px 10px', fontSize: '0.75rem', color: '#CBD5E1', lineHeight: 1.45, border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '7px 9px', fontSize: '0.71rem', color: '#CBD5E1', lineHeight: 1.4, border: '1px solid rgba(255,255,255,0.08)' }}>
                 <strong style={{ color: '#FCA5A5' }}>10 Statistical Detectors</strong> correlate timeline timestamps & negative space anomalies against sector benchmarks.
               </div>
             </div>
 
             {/* Transform Arrow 2 */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#991B1B' }}>
-              <div style={{ background: '#FEE2E2', padding: '8px', borderRadius: '50%', color: '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ArrowRight size={22} strokeWidth={2.5} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#991B1B' }}>
+              <div style={{ background: '#FEE2E2', padding: '6px', borderRadius: '50%', color: '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ArrowRight size={18} strokeWidth={2.5} />
               </div>
             </div>
 
-            {/* 3. Output Assessment Card */}
+            {/* 3. AIR-GAPPED LOCAL AI COPILOT CARD (RED THEME) */}
+            <div 
+              style={{ 
+                background: 'linear-gradient(145deg, #7F1D1D 0%, #991B1B 100%)', 
+                color: '#FFFFFF', 
+                borderRadius: '14px', 
+                padding: '1.1rem 1.15rem', 
+                border: '1.5px solid #EF4444', 
+                boxShadow: '0 8px 24px -4px rgba(185,28,28,0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                height: '100%',
+                position: 'relative'
+              }}
+            >
+              <div style={{ position: 'absolute', top: '-10px', right: '12px', background: '#DC2626', color: '#FFFFFF', padding: '1px 8px', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.04em', border: '1px solid #FCA5A5' }}>
+                100% OFFLINE AI
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.65rem' }}>
+                <div style={{ background: 'rgba(254, 202, 202, 0.22)', border: '1px solid #FECACA', padding: '6px', borderRadius: '8px', color: '#FEE2E2' }}>
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, letterSpacing: '0.01em', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Air-Gapped Copilot
+                  </div>
+                  <div style={{ fontSize: '0.66rem', color: '#FECACA', fontWeight: 600 }}>Local Qwen / Llama 3B</div>
+                </div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '7px 9px', fontSize: '0.71rem', color: '#FEE2E2', lineHeight: 1.4, border: '1px solid rgba(255,255,255,0.12)' }}>
+                <strong style={{ color: '#FFFFFF' }}>Sec 70A Briefings & RCA</strong> synthesized locally via Ollama with zero external telemetry or cloud leakage.
+              </div>
+            </div>
+
+            {/* Transform Arrow 3 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#991B1B' }}>
+              <div style={{ background: '#FEE2E2', padding: '6px', borderRadius: '50%', color: '#991B1B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ArrowRight size={18} strokeWidth={2.5} />
+              </div>
+            </div>
+
+            {/* 4. Output Assessment Card */}
             <div 
               style={{ 
                 background: '#FFFFFF', 
                 border: '2px solid #EF4444', 
                 borderRadius: '14px', 
-                padding: '1.25rem 1.4rem', 
+                padding: '1.1rem 1.15rem', 
                 boxShadow: '0 8px 24px -4px rgba(239,68,68,0.12)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -138,16 +189,16 @@ export const SolutionSection: React.FC = () => {
                 height: '100%'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.75rem' }}>
-                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '7px', borderRadius: '8px', color: '#DC2626' }}>
-                  <ShieldCheck size={22} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.65rem' }}>
+                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '6px', borderRadius: '8px', color: '#DC2626' }}>
+                  <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#991B1B' }}>True Operational Posture</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>Audited Cyber Resilience</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#991B1B' }}>True Operational Posture</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>Audited Cyber Resilience</div>
                 </div>
               </div>
-              <div style={{ background: '#FEF2F2', borderRadius: '8px', padding: '8px 10px', fontSize: '0.75rem', color: '#7F1D1D', lineHeight: 1.45, border: '1px solid #FCA5A5' }}>
+              <div style={{ background: '#FEF2F2', borderRadius: '8px', padding: '7px 9px', fontSize: '0.71rem', color: '#7F1D1D', lineHeight: 1.4, border: '1px solid #FCA5A5' }}>
                 <strong style={{ color: '#991B1B' }}>Real Gap Score (0–100)</strong> + deterministic evidence chain for regulators & senior leadership oversight.
               </div>
             </div>
@@ -177,6 +228,27 @@ export const SolutionSection: React.FC = () => {
             >
               <Scale size={15} />
               Execution Gap Discovery
+            </button>
+
+            <button
+              onClick={() => setActiveTab('copilot')}
+              style={{
+                padding: '0.625rem 1.25rem',
+                borderRadius: '0.5rem',
+                border: activeTab === 'copilot' ? '1px solid #991B1B' : '1px solid #CBD5E1',
+                backgroundColor: activeTab === 'copilot' ? '#991B1B' : '#FFFFFF',
+                color: activeTab === 'copilot' ? '#FFFFFF' : '#0F172A',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Sparkles size={15} />
+              Air-Gapped AI Copilot
             </button>
 
             <button
@@ -220,11 +292,6 @@ export const SolutionSection: React.FC = () => {
               <Layers size={15} />
               The 8 Capability Dimensions
             </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
-            <span>10 Automated Mathematical Detectors</span>
-            <ChevronRight size={14} color="#991B1B" />
           </div>
         </div>
 
@@ -414,6 +481,99 @@ export const SolutionSection: React.FC = () => {
               </div>
 
             </div>
+          </div>
+        )}
+
+        {/* Tab 2.5: Air-Gapped Local AI Copilot Showcase */}
+        {activeTab === 'copilot' && (
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #C7D2FE', borderRadius: '16px', padding: '2rem', boxShadow: '0 8px 30px -4px rgba(79,70,229,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', padding: '6px', borderRadius: '8px', color: '#4F46E5' }}>
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                    Air-Gapped AI Supervisory Copilot (§5 NCIIPC Compliance)
+                  </h3>
+                  <div style={{ fontSize: '0.74rem', color: '#6366F1', fontWeight: 700 }}>
+                    100% OFFLINE LOCAL INFERENCE • ZERO EXTERNAL TELEMETRY • NEVER ALTERS RISK SCORES
+                  </div>
+                </div>
+              </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#EDE9FE', color: '#6D28D9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
+                LOCAL OLLAMA (localhost:11434)
+              </span>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: '#475569', marginBottom: '1.75rem', lineHeight: 1.6 }}>
+              Purpose-built for classified defense, banking switches, and SCADA control rooms where cloud connectivity is prohibited. Our offline copilot turns complex statistical anomalies into clear, audit-ready regulatory evidence without sending a single byte outside the firewall.
+            </p>
+
+            {/* 3 AI Feature Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              
+              {/* Feature 1: Section 70A Statutory Briefing */}
+              <div style={{ background: '#FAF5FF', border: '1.5px solid #E9D5FF', padding: '1.35rem', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#7E22CE' }}>SYNTHESIS ENGINE</span>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#F3E8FF', color: '#9333EA', padding: '2px 7px', borderRadius: '4px' }}>SEC 70A (IT ACT)</span>
+                </div>
+                <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                  Statutory SAR-01 Dossier Generation
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                  Converts 11 statistical detector anomalies into formal executive supervisory reports formatted per NCIIPC statutory guidelines in seconds.
+                </div>
+              </div>
+
+              {/* Feature 2: Natural Language Root Cause Analysis */}
+              <div style={{ background: '#EEF2FF', border: '1.5px solid #C7D2FE', padding: '1.35rem', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#3730A3' }}>LOCAL REASONER</span>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#E0E7FF', color: '#4338CA', padding: '2px 7px', borderRadius: '4px' }}>QWEN-2.5 / LLAMA 3B</span>
+                </div>
+                <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                  Natural Language Root-Cause Explanations
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                  Unmasks exactly <em>why</em> an analyst closed 14 tickets in 180 seconds or why SCADA RTU nodes went silent without manual spreadsheet formulas.
+                </div>
+              </div>
+
+              {/* Feature 3: Air-Gap Safety & Invariant Lock */}
+              <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', padding: '1.35rem', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#166534' }}>SECURITY INVARIANT</span>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#DCFCE7', color: '#15803D', padding: '2px 7px', borderRadius: '4px' }}>NON-MUTATING AI</span>
+                </div>
+                <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                  Deterministic Safety Boundaries
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                  <strong>Hard guarantee:</strong> AI model never modifies mathematical Real Gap scores or evidence weights; it operates strictly as an explanatory synthesizer.
+                </div>
+              </div>
+
+            </div>
+
+            {/* Interactive Terminal / Prompt Preview (Clean Light Mode) */}
+            <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '1rem 1.25rem', border: '1.5px solid #CBD5E1', fontFamily: 'JetBrains Mono, monospace', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444' }}></div>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B' }}></div>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }}></div>
+                  <span style={{ fontSize: '0.72rem', color: '#475569', marginLeft: '6px', fontWeight: 700 }}>localCopilot.js — Live Air-Gapped Output Preview</span>
+                </div>
+                <span style={{ fontSize: '0.67rem', color: '#0369A1', background: '#E0F2FE', border: '1px solid #BAE6FD', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>100% OFFLINE • TTFT 1.4s</span>
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#1E293B', lineHeight: 1.65 }}>
+                <span style={{ color: '#BE185D', fontWeight: 800 }}>&gt; query:</span> <span style={{ color: '#0F172A', fontWeight: 600 }}>"Synthesize supervisory findings for CSE-POWER-01 SCADA silent RTU anomaly"</span><br/>
+                <span style={{ color: '#15803D', fontWeight: 800 }}>&gt; copilot:</span> <span style={{ color: '#334155', fontWeight: 500 }}>"Under NCIIPC Cyber Resilience Criterion §4.2, 3 field RTUs exhibited zero telemetry over 18 consecutive days while peer baseline is 412 msgs/hr. Recommend immediate manual inspection under Rule 4(3) of IT (Critical Infrastructure) Rules."</span>
+              </div>
+            </div>
+
           </div>
         )}
 

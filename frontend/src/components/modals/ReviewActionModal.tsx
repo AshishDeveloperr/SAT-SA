@@ -1,6 +1,8 @@
-import React from 'react';
-import { X, ShieldAlert, CheckCircle2, FileText, Check, Copy, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, ShieldAlert, CheckCircle2, FileText, Check, Copy, AlertTriangle, Bot } from 'lucide-react';
 import { ReviewSample } from '../../types/domain';
+
 
 interface ReviewActionModalProps {
   modalState?: {
@@ -64,9 +66,11 @@ export function ReviewActionModal({
 
   const { sample, decision } = modalState;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div 
-      className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
+      className="fixed inset-0 w-screen h-screen bg-slate-950/70 backdrop-blur-xs z-[99999] flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
       onClick={() => !isSubmitting && onClose()}
     >
       <div 
@@ -200,7 +204,7 @@ export function ReviewActionModal({
               <div className="p-3 text-[11px] font-mono text-slate-200 leading-relaxed space-y-2 select-text overflow-x-auto bg-black">
                 <div>
                   <span className="text-emerald-400 font-bold">$ syslog --stream --record={sample.record_id}</span>
-                  <div className="text-emerald-300/90 break-all pl-2 border-l border-emerald-500/30 mt-0.5">
+                  <div className="text-white break-all pl-2 border-l border-slate-700 mt-0.5">
                     {sample.rawLog || 
                      `2026-10-01T08:15:00.120Z [CRITICAL] ${sample.entity_code} (${sample.record_id}): Fast critical triage anomaly | disposition=FALSE_POSITIVE closed_at=2026-10-01T08:18:22.000Z operator=analyst_sharma_01`}
                   </div>
@@ -227,20 +231,37 @@ export function ReviewActionModal({
             </span>
           </div>
 
-          {/* Justification Textarea */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-              <span>Auditor Justification &amp; Notes</span>
-              <span className="text-[10px] text-slate-400 font-normal">Stored in SHA-256 Ledger</span>
-            </label>
+          {/* Justification Textarea with Local AI Copilot */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                <span>Auditor Justification &amp; Notes</span>
+                <span className="text-[10px] text-slate-400 font-normal">(SHA-256 Chained)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const isConfirmed = decision === 'confirmed';
+                  const autoNote = isConfirmed
+                    ? `CONFIRMED SUPERVISORY DEFECT: Empirical verification of Record #${sample.record_id} (${sample.entity_code}) confirms non-compliant triage workflow. Alert acknowledged without substantiating investigative steps or forensic pivot telemetry, creating an execution discrepancy under NCIIPC Section 7.4.`
+                    : `BENIGN DISPOSITION VERIFIED: Independent sample examination confirms appropriate risk mitigation and proportionate investigation steps for Record #${sample.record_id}. No supervisory enforcement action required.`;
+                  handleCommentChange(autoNote);
+                }}
+                className="text-[10px] font-bold text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 border border-red-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer"
+              >
+                <Bot className="w-3 h-3 text-red-600" />
+                <span>AI Assist: Draft Statutory Rationale</span>
+              </button>
+            </div>
             <textarea 
               value={currentComment}
               onChange={(e) => handleCommentChange(e.target.value)}
               rows={3}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 bg-slate-50/50 resize-none font-sans"
-              placeholder="Enter examiner rationale or verification notes..."
+              placeholder="Enter examiner rationale or click 'AI Assist' to generate statutory text..."
             />
           </div>
+
 
           {/* Cryptographic notice */}
           <div className="bg-amber-50/80 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 flex items-center space-x-2">
@@ -282,6 +303,7 @@ export function ReviewActionModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Layers,
   ShieldAlert,
@@ -385,9 +386,9 @@ export const ReviewQueueView: React.FC<ReviewQueueViewProps> = ({
       </div>
 
       {/* 60% SLIDE-OVER SIDEBAR: ENTITY REVIEW QUEUE ROWS */}
-      {selectedQueueEntity && activeEntityQueueGroup && (
+      {selectedQueueEntity && activeEntityQueueGroup && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-2xs z-40 flex justify-end animate-in fade-in duration-200"
+          className="fixed inset-0 w-screen h-screen bg-slate-950/70 backdrop-blur-xs z-[9000] flex justify-end animate-in fade-in duration-200"
           onClick={() => setSelectedQueueEntity(null)}
         >
           <div 
@@ -536,7 +537,8 @@ export const ReviewQueueView: React.FC<ReviewQueueViewProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

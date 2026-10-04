@@ -524,12 +524,6 @@ export function App() {
         />
       )}
 
-      {/* MODAL: WHAT-IF SCENARIO STUDIO */}
-      <ScenarioStudioModal 
-        isOpen={isScenarioStudioOpen} 
-        onClose={() => setIsScenarioStudioOpen(false)}
-        onScenarioApplied={() => fetchAllData()}
-      />
 
       {/* MODAL: STATUTORY SUPERVISORY REPORT DOSSIER (FORM SAR-01) */}
       <StatutoryReportModal

@@ -43,7 +43,11 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({
     const examinerDecisions = auditLogs.filter(l => l.action?.toLowerCase().includes('review') || l.action?.toLowerCase().includes('decision')).length;
     const sanctionsIssued = auditLogs.filter(l => l.action?.toLowerCase().includes('sanction')).length;
     const uniqueActors = new Set(auditLogs.map(l => l.actor_id)).size;
-    const latestHash = auditLogs[0]?.hash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    const latestLog = auditLogs.reduce<AuditLog | null>((latest, curr) => {
+      if (!latest) return curr;
+      return Number(curr.id) > Number(latest.id) ? curr : latest;
+    }, null);
+    const latestHash = latestLog?.hash || auditLogs[0]?.hash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
     return {
       totalEntries,
@@ -60,22 +64,24 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({
   }, [auditLogs]);
 
   const filteredAuditLogs = useMemo(() => {
-    return auditLogs.filter(log => {
-      if (auditActionFilter !== 'ALL' && log.action !== auditActionFilter) {
-        return false;
-      }
-      if (auditSearchQuery.trim()) {
-        const q = auditSearchQuery.toLowerCase().trim();
-        const matches = 
-          String(log.id).includes(q) ||
-          log.action?.toLowerCase().includes(q) ||
-          log.actor_id?.toLowerCase().includes(q) ||
-          log.object_id?.toLowerCase().includes(q) ||
-          log.hash?.toLowerCase().includes(q);
-        if (!matches) return false;
-      }
-      return true;
-    });
+    return auditLogs
+      .filter(log => {
+        if (auditActionFilter !== 'ALL' && log.action !== auditActionFilter) {
+          return false;
+        }
+        if (auditSearchQuery.trim()) {
+          const q = auditSearchQuery.toLowerCase().trim();
+          const matches = 
+            String(log.id).includes(q) ||
+            log.action?.toLowerCase().includes(q) ||
+            log.actor_id?.toLowerCase().includes(q) ||
+            log.object_id?.toLowerCase().includes(q) ||
+            log.hash?.toLowerCase().includes(q);
+          if (!matches) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => Number(a.id) - Number(b.id));
   }, [auditLogs, auditActionFilter, auditSearchQuery]);
 
   const totalAuditPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));

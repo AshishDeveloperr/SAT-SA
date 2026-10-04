@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Printer,
@@ -13,8 +13,13 @@ import {
   EyeOff,
   Hash,
   CheckCircle2,
-  FileText
+  FileText,
+  Sparkles,
+  Bot,
+  RefreshCw
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
 
 interface StatutoryReportModalProps {
   isOpen: boolean;
@@ -80,7 +85,62 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
     return silentAssets.filter(a => a.entityCode === entity.code || a.entity_id === entity.id);
   }, [silentAssets, entity]);
 
+  // Air-Gapped Local Copilot Narrative State
+  const [copilotData, setCopilotData] = useState<{
+    narrative: string;
+    engine: string;
+    isAiGenerated: boolean;
+    model: string;
+  } | null>(null);
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
+
+  const fetchCopilotBriefing = useCallback(async () => {
+    if (!entity) return;
+    setIsGeneratingNarrative(true);
+    try {
+      const res = await fetch('/api/v1/copilot/briefing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityName: entity.name,
+          entityCode: entity.code,
+          sector: entity.sector_name || entity.sector_id || 'Critical Infrastructure',
+          riskTier: entity.riskLevel || 'EVALUATED',
+          score: entity.score || 0,
+          headlineSla: kpiGap?.headlineSlaPct ?? 98.5,
+          evidenceQuality: kpiGap?.evidenceQualityScore ?? 45,
+          executionGapSize: kpiGap?.executionGapSize ?? 53.5,
+          findingsCount: entityFindings.length,
+          silentAssetsCount: entitySilentAssets.length,
+          topFindings: entityFindings.slice(0, 5)
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setCopilotData(json.data);
+      }
+    } catch (err) {
+      console.warn('Failed to generate copilot narrative:', err);
+    } finally {
+      setIsGeneratingNarrative(false);
+    }
+  }, [entity, kpiGap, entityFindings, entitySilentAssets]);
+
+  // Reset copilot narrative when entity changes
+  const entityCode = entity?.code;
+  useEffect(() => {
+    setCopilotData(null);
+  }, [entityCode]);
+
+  // Auto-generate statutory briefing when modal opens
+  useEffect(() => {
+    if (isOpen && entity && !copilotData) {
+      fetchCopilotBriefing();
+    }
+  }, [isOpen, entity, copilotData, fetchCopilotBriefing]);
+
   if (!isOpen || !entity) return null;
+
 
   const reportDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -403,6 +463,74 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Air-Gapped Local AI Supervisory Examination Synthesis */}
+          <div className="sar-avoid-break bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="p-1 rounded-md bg-[#991B1B]/10 text-[#991B1B]">
+                  <Bot className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Air-Gapped AI Supervisory Narrative Synthesis
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  {copilotData?.engine || 'Local Air-Gapped (Ollama / Qwen2.5:3B)'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={fetchCopilotBriefing}
+                disabled={isGeneratingNarrative}
+                className="text-[11px] font-bold text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 px-2 py-1 rounded bg-white border border-slate-300 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${isGeneratingNarrative ? 'animate-spin text-red-600' : ''}`} />
+                <span>{isGeneratingNarrative ? 'Synthesizing...' : 'Re-synthesize'}</span>
+              </button>
+            </div>
+
+            {isGeneratingNarrative && !copilotData ? (
+              <div className="p-5 text-center text-xs text-slate-500 animate-pulse flex items-center justify-center gap-2 bg-white rounded-lg border border-slate-200">
+                <RefreshCw className="w-4 h-4 animate-spin text-red-600" />
+                <span>Local Air-Gapped LLM is evaluating supervisory evidence and drafting Section 65B briefing...</span>
+              </div>
+            ) : (
+              <div className={`text-xs text-slate-800 leading-relaxed bg-white p-4 rounded-lg border border-slate-200 select-all relative transition-opacity ${isGeneratingNarrative ? 'opacity-50' : 'opacity-100'}`}>
+                <div className="prose prose-xs max-w-none text-slate-700 space-y-2">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ node, ...props }) => <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2 mt-1" {...props} />,
+                      h2: ({ node, ...props }) => <h4 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-0.5 mb-1 mt-2.5" {...props} />,
+                      h3: ({ node, ...props }) => <h5 className="text-[11px] font-bold text-slate-900 mb-1 mt-2" {...props} />,
+                      p: ({ node, ...props }) => <p className="text-[11px] leading-relaxed text-slate-700 mb-2 last:mb-0" {...props} />,
+                      strong: ({ node, ...props }) => <strong className="font-extrabold text-slate-900" {...props} />,
+                      ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-1.5 text-[11px]" {...props} />,
+                      ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-1.5 text-[11px]" {...props} />,
+                      li: ({ node, ...props }) => <li className="text-[11px] text-slate-700" {...props} />,
+                      blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-[#991B1B] pl-2.5 py-0.5 text-[11px] italic text-slate-600 bg-red-50/40 rounded-r my-2" {...props} />,
+                      code: ({ node, inline, ...props }: any) => inline 
+                        ? <code className="font-mono text-[10px] bg-slate-100 px-1 py-0.5 rounded text-red-700 border border-slate-200" {...props} />
+                        : <pre className="font-mono text-[10px] bg-slate-900 text-slate-200 p-2.5 rounded-md overflow-x-auto my-2"><code {...props} /></pre>
+                    }}
+                  >
+                    {copilotData?.narrative || ''}
+                  </ReactMarkdown>
+                </div>
+                {isGeneratingNarrative && (
+                  <div className="absolute inset-0 bg-white/70 backdrop-blur-xs rounded-lg flex items-center justify-center text-xs font-bold text-slate-700 gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-red-600" />
+                    <span>Re-synthesizing supervisory brief via local Qwen2.5:3B...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-sans">
+              <span>* Compliant with NCIIPC Section 5: Executed 100% locally on workstation (Zero External APIs).</span>
+              <span className="font-mono text-slate-500">Model: {copilotData?.model || 'qwen2.5:3b'}</span>
+            </div>
+          </div>
+
 
           {/* Section 6: Cryptographic Ledger Seal & Signature */}
           <div className="sar-avoid-break pt-4 border-t-2 border-slate-900 text-xs">

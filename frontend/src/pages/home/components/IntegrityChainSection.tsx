@@ -101,15 +101,21 @@ export const IntegrityChainSection: React.FC = () => {
           <h2 className="landing-h2" style={{ marginBottom: '0.75rem', whiteSpace: 'nowrap' }}>
             Cryptographic hash chaining &amp; tamper-proof audit
           </h2>
-          <p className="landing-lead" style={{ maxWidth: '64rem', marginBottom: 0 }}>
+          <p className="landing-lead" style={{ maxWidth: '64rem', marginBottom: 0, lineHeight: 1.75, color: '#0F172A' }}>
             Every supervisory action, parameter modification, and examiner decision is cryptographically anchored in a{' '}
-            <span style={{ backgroundColor: '#991B1B', color: '#FFFFFF', padding: '2px 7px', borderRadius: '4px', fontWeight: 600 }}>
+            <span className="highlight-badge-red">
               sequential SHA-256 hash chain
             </span>
             —guaranteeing{' '}
-            <strong style={{ color: '#0F172A' }}>zero-trust integrity</strong>, complete{' '}
-            <strong style={{ color: '#0F172A' }}>chain of custody</strong>, and{' '}
-            <span style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+            <span className="highlight-badge-dark">
+              zero-trust integrity
+            </span>
+            , complete{' '}
+            <span className="highlight-badge-dark">
+              chain of custody
+            </span>
+            , and{' '}
+            <span className="highlight-badge-red">
               court-admissible forensic proof
             </span>
             .

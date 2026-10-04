@@ -1,103 +1,176 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileCode2, Copy, Check, Terminal, Code, Layers, Sparkles } from 'lucide-react';
+import { 
+  FileCode2, 
+  Copy, 
+  Check, 
+  Terminal, 
+  Code, 
+  Sparkles, 
+  Maximize2, 
+  Minimize2,
+  Lock,
+  Bot,
+  Database,
+  Activity,
+  ShieldCheck,
+  ArrowRight
+} from 'lucide-react';
 import mermaid from 'mermaid';
 
-const ASCII_PIPELINE = `
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                           PERIODIC CSE SUBMISSIONS (BATCH CSV / JSON / LOG)                     │
-│    [Energy / SCADA]     [Banking & Finance]     [Telecom 5G]     [Defense]     [Healthcare]     │
-└────────────────────────────────────────────────┬────────────────────────────────────────────────┘
-                                                 │
-                                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                       STAGE 1: UNIVERSAL MULTI-FORMAT INGESTION & DATA MINIMIZATION             │
-│    • Streaming CSV / JSON / LOG / XLSX Parsers       • Salted Pseudonymization (assignee_hash)  │
-│    • Referential Foreign Key Validation              • Zero Raw Telemetry / Zero PII Storage    │
-└────────────────────────────────────────────────┬────────────────────────────────────────────────┘
-                                                 │
-                                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                       STAGE 2: FORENSIC FACT LEDGER & STORAGE                                   │
-│    • Monthly Partitioned Fact Tables (alerts, cases) • Incremental Daily Rollups (alert_daily)  │
-│    • Dynamic Rule Registry & Version Diffing         • WAL Persistence & Air-Gapped Isolation   │
-└────────────────────────────────────────────────┬────────────────────────────────────────────────┘
-                                                 │
-                                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                       STAGE 3: SUPERVISORY ANALYTICS & DETECTOR CORE                            │
-│    ┌───────────────────────────────┐     ┌───────────────────────────────┐                      │
-│    │ Execution Gap Detectors (EG)  │     │ Negative Space Reasoners (NS) │                      │
-│    │ • EG-01: Fast Critical Close  │     │ • NS-01: Silent SCADA Assets  │                      │
-│    │ • EG-02: Unescalated Threat   │     │ • NS-02: Missing Categories   │                      │
-│    │ • EG-03: Zero-Step Acknowledge│     │ • NS-03: Unfiled Case Records │                      │
-│    │ • EG-04: SimHash Duplicates   │     │ • NS-05: Alert Velocity Drops │                      │
-│    │ • EG-06: SLA Bunching Gaming  │     └───────────────┬───────────────┘                      │
-│    └───────────────┬───────────────┘                     │                                      │
-│                    └───────────────────────┬─────────────┘                                      │
-│                                            ▼                                                    │
-│    • Robust Statistics (Median, MAD, Robust Z)  • Latent Maturity Behavioral Generator          │
-└────────────────────────────────────────────┬────────────────────────────────────────────────────┘
-                                             │
-                                             ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                       STAGE 4: SUPERVISORY DECISION-SUPPORT & GOVERNANCE                        │
-│    • Composite Attention Scoring (0–100)        • Headline KPIs vs Underlying Evidence Gap View │
-│    • Review Portfolio Optimizer (85% + 15%)     • Cryptographic SHA-256 Hash Chained Audit Log  │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+const MERMAID_PIPELINE = `flowchart LR
+    %% Stage 1: Ingestion Tier
+    subgraph STAGE1 ["1. Ingestion Tier"]
+        direction LR
+        CSE["CSE Streams<br/>CSV / JSON / Logs"]
+        PARSER["Streaming Parser<br/>& Pseudonymizer"]
+        CSE --> PARSER
+    end
+
+    %% Stage 2: Forensic Fact Ledger
+    subgraph STAGE2 ["2. Fact Ledger"]
+        direction LR
+        DB[("SQLite WAL DB<br/>Fact Tables")]
+        AGG["Rule Registry &<br/>Daily Rollups"]
+        DB --> AGG
+    end
+
+    %% Stage 3: Supervisory Analytics Core
+    subgraph STAGE3 ["3. Analytics Core"]
+        direction LR
+        EG["Execution Gaps<br/>(EG-01..06)"]
+        NS["Negative Space<br/>(NS-01..05)"]
+        STATS["Sector Z-Score<br/>(Median / MAD)"]
+        EG --> STATS
+        NS --> STATS
+    end
+
+    %% Stage 4: Air-Gapped AI Copilot Tier
+    subgraph STAGE4 ["4. AI Copilot (Air-Gap)"]
+        direction LR
+        OLLAMA["Local Ollama 3B<br/>localhost:11434"]
+        FALLBACK["Safety Fallback<br/>(Deterministic)"]
+        SYNTH{"Statutory SAR-01<br/>Synthesizer"}
+        OLLAMA --> SYNTH
+        FALLBACK -.-> SYNTH
+    end
+
+    %% Stage 5: Decision Support & Forensics
+    subgraph STAGE5 ["5. Audit & Governance"]
+        direction LR
+        SCORE["85/15 Portfolio<br/>& Priority Score"]
+        AUDIT[("SHA-256 Ledger<br/>(Sec 65B Audit)")]
+        SCORE --> AUDIT
+    end
+
+    %% Inter-Stage Pipeline Connections
+    PARSER --> DB
+    AGG --> EG
+    AGG --> NS
+    STATS --> OLLAMA
+    STATS --> SCORE
+    SYNTH --> SCORE
 `;
 
-const MERMAID_PIPELINE = `
-graph LR
-    classDef cse fill:#FEF2F2,stroke:#DC2626,stroke-width:1.5px,color:#991B1B,font-weight:700;
-    classDef stage fill:#FFFFFF,stroke:#94A3B8,stroke-width:1.5px,color:#0F172A,font-weight:600;
-    classDef detector fill:#FFFBEB,stroke:#D97706,stroke-width:1.5px,color:#92400E,font-weight:600;
-    classDef audit fill:#0F172A,stroke:#EF4444,stroke-width:1.5px,color:#FFFFFF,font-weight:700;
-
-    subgraph INGESTION ["1. Ingestion Tier"]
-        CSE["Periodic Multi-CSE<br/>(CSV, JSON, LOG, XLSX)"]:::cse
-        PARSER["Streaming Universal Parser<br/>&amp; Salted Anonymizer"]:::stage
-    end
-
-    subgraph STORAGE ["2. Fact Ledger"]
-        DB["Partitioned SQLite WAL<br/>(Alerts, Cases, Assets)"]:::stage
-    end
-
-    subgraph ENGINE ["3. Supervisory Analytics Engine"]
-        EG["Execution Gap Discovery<br/>(EG-01 to EG-06 Detectors)"]:::detector
-        NS["Negative Space Reasoners<br/>(NS-01 to NS-05 Silent Assets)"]:::detector
-        STATS["Robust Sector Statistics<br/>(MAD &amp; Robust Z-Scores)"]:::stage
-    end
-
-    subgraph GOVERNANCE ["4. Decision Support &amp; Audit"]
-        SCORE["Composite Attention Scoring<br/>&amp; Evidence Gap View"]:::stage
-        AUDIT["SHA-256 Chained Hash Ledger<br/>(Sec 65B Forensics)"]:::audit
-    end
-
-    CSE --> PARSER
-    PARSER --> DB
-    DB --> EG
-    DB --> NS
-    EG --> STATS
-    NS --> STATS
-    STATS --> SCORE
-    SCORE --> AUDIT
+const ASCII_PIPELINE = `
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               PERIODIC CSE SUBMISSIONS (BATCH CSV / JSON / LOG / XLSX)                            │
+│     [Energy / SCADA Grid]     [Banking & Finance]     [Telecom 5G Core]     [Defense & Space]     [Healthcare]    │
+└─────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────┘
+                                                          │
+                                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        STAGE 1: UNIVERSAL MULTI-FORMAT INGESTION & DATA MINIMIZATION                              │
+│     • Streaming Universal Chunked Parser (50MB+ capable)      • Salted Pseudonymization (assignee_hash)           │
+│     • Foreign Key Referential & Schema Integrity Validation   • Zero Raw Telemetry / Zero PII Storage             │
+└─────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────┘
+                                                          │
+                                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        STAGE 2: FORENSIC FACT LEDGER & PARTITIONED STORAGE                                        │
+│     • Monthly Partitioned Fact Tables (alerts, cases, assets) • Incremental Daily Rollups (alert_daily_agg)       │
+│     • Dynamic DB-Backed Rule Registry & Parameter Diffing     • WAL Persistence & Zero-Cloud Air-Gapped Isolation │
+└─────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────┘
+                                                          │
+                                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        STAGE 3: SUPERVISORY ANALYTICS & DETECTOR CORE                                             │
+│     ┌────────────────────────────────┐       ┌────────────────────────────────┐                                   │
+│     │  Execution Gap Detectors (EG)  │       │ Negative Space Reasoners (NS)  │                                   │
+│     │  • EG-01: 3-Min Critical Close │       │ • NS-01: Silent SCADA Assets   │                                   │
+│     │  • EG-02: Unescalated Critical │       │ • NS-02: Missing Threat Types  │                                   │
+│     │  • EG-03: Zero-Step Triage     │       │ • NS-03: Unfiled Case Records  │                                   │
+│     │  • EG-04: SimHash Duplication  │       │ • NS-05: Alert Velocity Drops  │                                   │
+│     │  • EG-06: SLA Bunching Gaming  │       └────────────────┬───────────────┘                                   │
+│     └────────────────┬───────────────┘                        │                                                   │
+│                      └───────────────────────┬────────────────┘                                                   │
+│                                              ▼                                                                    │
+│     • Robust Sector Statistics (Median, MAD, Robust Z-Scores) • Latent Maturity Behavioral Generator              │
+└──────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────┘
+                                               │
+                                               ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        STAGE 4: LOCAL AIR-GAPPED AI COPILOT & STATUTORY SYNTHESIS                                 │
+│     ┌─────────────────────────────────────────────────┐   ┌─────────────────────────────────────────────────┐     │
+│     │ Local Ollama Daemon (Qwen2.5:3B / Llama3.2:3B)  │   │ Deterministic Heuristic Fallback Engine         │     │
+│     │ • 100% Offline Local Inference on localhost:11434│   │ • 100% Uptime Guarantee (Zero-Cloud Standard)   │     │
+│     │ • Safety Invariant: AI Never Alters Risk Scores │   │ • Statutory Template Synthesizer (NCIIPC v2.4)  │     │
+│     └────────────────────────┬────────────────────────┘   └────────────────────────┬────────────────────────┘     │
+│                              └────────────────────────┬────────────────────────────┘                              │
+│                                                       ▼                                                           │
+│     • SAR-01 Statutory Briefing Generation (Sec 70A)  • Sec 65B Peer Comparative Synthesis (Goodhart Discrepancy) │
+└──────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────┘
+                                               │
+                                               ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        STAGE 5: DECISION SUPPORT, GOVERNANCE & HASH-CHAINED FORENSICS                             │
+│     • Composite Attention Scoring (0–100 Weighted Rank)       • Headline KPIs vs Underlying Evidence Quality View │
+│     • Review Portfolio Optimizer (85% Priority + 15% Explore) • Cryptographic SHA-256 Chained Hash Ledger (Sec 65B│
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 `;
 
 export const ArchitectureSection: React.FC = () => {
-  const [diagramMode, setDiagramMode] = useState<'rendered' | 'flowchart' | 'ascii' | 'mermaid'>('rendered');
+  const [diagramMode, setDiagramMode] = useState<'rendered' | 'code' | 'ascii'>('rendered');
   const [copied, setCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     mermaid.initialize({
-      startOnLoad: true,
-      theme: 'neutral',
-      securityLevel: 'loose',
-      fontFamily: 'Poppins, -apple-system, sans-serif'
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        darkMode: false,
+        background: '#FFFFFF',
+        mainBkg: '#FFFFFF',
+        nodeBorder: '#1E293B',
+        nodeTextColor: '#0F172A',
+        lineColor: '#334155',
+        textColor: '#0F172A',
+        titleColor: '#0F172A',
+        subgraphBkg: '#F8FAFC',
+        subgraphBorder: '#CBD5E1',
+        edgeLabelBackground: '#FFFFFF',
+        clusterBkg: '#F8FAFC',
+        clusterBorder: '#CBD5E1',
+        defaultLinkColor: '#334155',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize: '11px'
+      }
     });
+
     if (diagramMode === 'rendered' && mermaidRef.current) {
-      mermaidRef.current.removeAttribute('data-processed');
-      mermaid.contentLoaded();
+      mermaidRef.current.innerHTML = '';
+      const renderId = `mermaid-arch-${Date.now()}`;
+      mermaid
+        .render(renderId, MERMAID_PIPELINE)
+        .then(({ svg }) => {
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = svg;
+          }
+        })
+        .catch((err) => {
+          console.error('Mermaid render error:', err);
+        });
     }
   }, [diagramMode]);
 
@@ -112,222 +185,336 @@ export const ArchitectureSection: React.FC = () => {
       <div className="landing-content-wrap">
         
         {/* Section Header */}
-        <div style={{ maxWidth: '64rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, background: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA', padding: '2px 10px', borderRadius: '9999px' }}>
-              Master Supervisory Architecture
+        <div style={{ maxWidth: '64rem', marginBottom: '1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#0F172A', color: '#FFFFFF', padding: '2px 10px', borderRadius: '9999px', letterSpacing: '0.04em' }}>
+              MASTER SUPERVISORY ARCHITECTURE
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
-              • Dual-Discipline • 10 Core Detectors • SHA-256 Hash Chain • Zero-Cloud Air-Gapped
+            <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>
+              • 5 Air-Gapped Tiers • Dual-Discipline Detectors • Local AI Copilot • SHA-256 Hash Chain
             </span>
           </div>
-          <h2 className="landing-h2" style={{ marginBottom: '0.75rem' }}>
+          <h2 className="landing-h2" style={{ marginBottom: '0.5rem' }}>
             System architecture &amp; processing dataflow
           </h2>
-          <p className="landing-lead" style={{ maxWidth: '100%', marginBottom: 0 }}>
-            End-to-end supervisory analytics pipeline from streaming multi-CSE submission ingestion through partitioned storage, deterministic detection, and SHA-256 hash-chained examiner decisions.
+          <p className="landing-lead" style={{ maxWidth: '100%', marginBottom: 0, fontSize: '0.94rem', color: '#0F172A', lineHeight: 1.8 }}>
+            End-to-end{' '}
+            <span className="highlight-badge-red">
+              supervisory analytics pipeline
+            </span>{' '}
+            from streaming multi-CSE submission ingestion through partitioned storage,{' '}
+            <span className="highlight-badge-dark">
+              deterministic detection
+            </span>
+            , local{' '}
+            <span className="highlight-badge-red">
+              air-gapped AI narrative synthesis
+            </span>
+            , and{' '}
+            <span className="highlight-badge-dark">
+              SHA-256 hash-chained forensic audit
+            </span>
+            .
           </p>
         </div>
 
-        {/* 4 Pipeline Stages Navigation Bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginBottom: '1.25rem' }}>
-          <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '12px 14px' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 1</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>Multi-CSE Streaming Ingestion</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>CSV / JSON / LOG / XLSX • Pseudonymization</div>
+        {/* 5 Pipeline Stages Navigation Bar (Vibrant & Colorful) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', marginBottom: '1.25rem' }}>
+          
+          {/* Stage 1: Sky Blue */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #BAE6FD', borderTop: '3.5px solid #0284C7', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#0369A1', background: '#E0F2FE', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 1</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#0284C7' }}>⚡ INGEST</span>
+            </div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>Multi-CSE Ingestion</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '2px' }}>CSV/JSON/LOG • Pseudonymizer</div>
           </div>
-          <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '12px 14px' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 2</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>Forensic Fact Ledger</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>Normalized Tables • Air-Gapped WAL DB</div>
+
+          {/* Stage 2: Indigo / Purple */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #DDD6FE', borderTop: '3.5px solid #7C3AED', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 6px rgba(124, 58, 237, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#6D28D9', background: '#EDE9FE', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 2</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#7C3AED' }}>🔒 LEDGER</span>
+            </div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>Forensic Fact Ledger</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '2px' }}>Partitioned Tables • SQLite WAL</div>
           </div>
-          <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '12px 14px' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 3</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>Supervisory Analytics Core</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>Execution Gaps &amp; Negative Space</div>
+
+          {/* Stage 3: Crimson / Amber Flame */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #FECACA', borderTop: '3.5px solid #DC2626', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 6px rgba(220, 38, 38, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#991B1B', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 3</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#DC2626' }}>🚨 11 DETECTORS</span>
+            </div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>Supervisory Analytics</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '2px' }}>Execution Gaps &amp; Negative Space</div>
           </div>
-          <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '12px 14px' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 4</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>Decision Support &amp; Audit</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>Review Queue • SHA-256 Chained Hash</div>
+
+          {/* Stage 4: Magenta / Violet AI */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #FBCFE8', borderTop: '3.5px solid #DB2777', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 6px rgba(219, 39, 119, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#9D174D', background: '#FCE7F3', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 4</span>
+              <span style={{ fontSize: '0.62rem', padding: '1px 6px', background: '#FDF2F8', color: '#BE185D', borderRadius: '4px', fontWeight: 800, border: '1px solid #FBCFE8' }}>✨ AIR-GAP AI</span>
+            </div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>Local AI Copilot</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '2px' }}>Ollama 3B • Zero Cloud</div>
           </div>
+
+          {/* Stage 5: Emerald Green */}
+          <div style={{ background: '#FFFFFF', border: '1.5px solid #BBF7D0', borderTop: '3.5px solid #16A34A', borderRadius: '12px', padding: '10px 12px', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#166534', background: '#DCFCE7', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stage 5</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#16A34A' }}>🛡️ AUDIT</span>
+            </div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>Decision Support &amp; Audit</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '2px' }}>85/15 Queue • SHA-256 Ledger</div>
+          </div>
+
         </div>
 
-        {/* Interactive Architecture Window */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+        {/* White Markdown Mermaid Architecture Window (Pure Neutral, Low Height, Small Boxes) */}
+        <div 
+          style={{ 
+            background: '#FFFFFF', 
+            border: '1.5px solid #CBD5E1', 
+            borderRadius: '14px', 
+            overflow: 'hidden', 
+            boxShadow: '0 4px 16px -2px rgba(0,0,0,0.05)' 
+          }}
+        >
           
-          {/* Window Top Bar */}
-          <div style={{ padding: '0.75rem 1.25rem', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          {/* Markdown Code Window Header */}
+          <div 
+            style={{ 
+              padding: '0.65rem 1.25rem', 
+              background: '#F8FAFC', 
+              borderBottom: '1px solid #E2E8F0', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap', 
+              gap: '0.75rem' 
+            }}
+          >
+            {/* Title & Badges */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileCode2 size={16} color="#991B1B" />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', fontFamily: 'JetBrains Mono, monospace' }}>
+              <FileCode2 size={16} color="#64748B" />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0F172A', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
                 ARCHITECTURE.md
               </span>
-              <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.64rem', fontWeight: 700, background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '5px' }}>
+                ```mermaid
+              </span>
+              <span style={{ fontSize: '0.64rem', fontWeight: 700, background: '#F1F5F9', color: '#0F172A', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '5px' }}>
                 AIR-GAPPED COMPLIANT
               </span>
             </div>
 
-            {/* Mode Switcher Tabs */}
-            <div style={{ display: 'flex', background: '#E2E8F0', padding: '3px', borderRadius: '8px', gap: '2px' }}>
-              <button
-                onClick={() => setDiagramMode('rendered')}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: diagramMode === 'rendered' ? '#FFFFFF' : 'transparent',
-                  color: diagramMode === 'rendered' ? '#991B1B' : '#64748B',
-                  boxShadow: diagramMode === 'rendered' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Sparkles size={12} />
-                Rendered Diagram
-              </button>
+            {/* Controls: Mode Switcher & Copy & Expand */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Tabs */}
+              <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', gap: '2px', border: '1px solid #E2E8F0' }}>
+                <button
+                  onClick={() => setDiagramMode('rendered')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: diagramMode === 'rendered' ? '#FFFFFF' : 'transparent',
+                    color: diagramMode === 'rendered' ? '#0F172A' : '#64748B',
+                    boxShadow: diagramMode === 'rendered' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Sparkles size={12} />
+                  Mermaid Preview
+                </button>
 
-              <button
-                onClick={() => setDiagramMode('flowchart')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: diagramMode === 'flowchart' ? '#FFFFFF' : 'transparent',
-                  color: diagramMode === 'flowchart' ? '#0F172A' : '#64748B',
-                  boxShadow: diagramMode === 'flowchart' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-                }}
-              >
-                Pipeline Cards
-              </button>
+                <button
+                  onClick={() => setDiagramMode('code')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: diagramMode === 'code' ? '#FFFFFF' : 'transparent',
+                    color: diagramMode === 'code' ? '#0F172A' : '#64748B',
+                    boxShadow: diagramMode === 'code' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Code size={12} />
+                  Mermaid Source
+                </button>
 
-              <button
-                onClick={() => setDiagramMode('ascii')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: diagramMode === 'ascii' ? '#FFFFFF' : 'transparent',
-                  color: diagramMode === 'ascii' ? '#0F172A' : '#64748B',
-                  boxShadow: diagramMode === 'ascii' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-                }}
-              >
-                ASCII Diagram
-              </button>
+                <button
+                  onClick={() => setDiagramMode('ascii')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: diagramMode === 'ascii' ? '#FFFFFF' : 'transparent',
+                    color: diagramMode === 'ascii' ? '#0F172A' : '#64748B',
+                    boxShadow: diagramMode === 'ascii' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Terminal size={12} />
+                  ASCII Spec
+                </button>
+              </div>
 
-              <button
-                onClick={() => setDiagramMode('mermaid')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: diagramMode === 'mermaid' ? '#FFFFFF' : 'transparent',
-                  color: diagramMode === 'mermaid' ? '#0F172A' : '#64748B',
-                  boxShadow: diagramMode === 'mermaid' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-                }}
-              >
-                Mermaid Code
-              </button>
+              {/* Action Buttons: Fullscreen & Copy */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  title={isFullscreen ? 'Exit Fullscreen' : 'Expand View'}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    color: '#334155',
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </button>
+
+                <button
+                  onClick={() => handleCopy(MERMAID_PIPELINE)}
+                  title="Copy Mermaid Code"
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    color: '#334155',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {copied ? <Check size={13} color="#16A34A" /> : <Copy size={13} />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* View: Rendered Mermaid Diagram */}
+          {/* VIEW 1: Rendered Mermaid Diagram (White Background, Low Height, Small Boxes) */}
           {diagramMode === 'rendered' && (
-            <div style={{ padding: '1.5rem 1rem', background: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflowX: 'auto' }}>
-              <div ref={mermaidRef} className="mermaid" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div 
+              style={{ 
+                padding: '1.25rem 1rem', 
+                background: '#FFFFFF', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                overflowX: 'auto',
+                minHeight: '220px'
+              }}
+            >
+              <style>{`
+                .mermaid-white-render svg {
+                  max-width: 100% !important;
+                  height: auto !important;
+                  background: #FFFFFF !important;
+                }
+                .mermaid-white-render .node rect,
+                .mermaid-white-render .node circle,
+                .mermaid-white-render .node polygon {
+                  rx: 6px !important;
+                  ry: 6px !important;
+                  fill: #FFFFFF !important;
+                  stroke: #1E293B !important;
+                  stroke-width: 1.4px !important;
+                }
+                .mermaid-white-render .node text {
+                  fill: #0F172A !important;
+                  font-size: 11px !important;
+                  font-weight: 600 !important;
+                  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                }
+                .mermaid-white-render .cluster rect {
+                  rx: 10px !important;
+                  ry: 10px !important;
+                  fill: #F8FAFC !important;
+                  stroke: #CBD5E1 !important;
+                  stroke-width: 1px !important;
+                }
+                .mermaid-white-render .cluster text {
+                  fill: #475569 !important;
+                  font-size: 10.5px !important;
+                  font-weight: 700 !important;
+                  letter-spacing: 0.04em !important;
+                  text-transform: uppercase !important;
+                }
+                .mermaid-white-render .edgePath path {
+                  stroke: #334155 !important;
+                  stroke-width: 1.4px !important;
+                }
+                .mermaid-white-render marker path,
+                .mermaid-white-render .marker {
+                  fill: #334155 !important;
+                  stroke: #334155 !important;
+                }
+                .mermaid-white-render .edgeLabel {
+                  background-color: #FFFFFF !important;
+                  color: #334155 !important;
+                  font-size: 9.5px !important;
+                  font-weight: 600 !important;
+                  padding: 1px 4px !important;
+                }
+              `}</style>
+              <div 
+                ref={mermaidRef} 
+                className="mermaid-white-render"
+                style={{ 
+                  width: '100%', 
+                  maxWidth: isFullscreen ? '100%' : '1100px', 
+                  display: 'flex', 
+                  justifyContent: 'center' 
+                }} 
+              />
+            </div>
+          )}
+
+          {/* VIEW 2: Raw Mermaid Code Block */}
+          {diagramMode === 'code' && (
+            <div style={{ background: '#F8FAFC', color: '#0F172A', padding: '1.25rem', overflowX: 'auto', borderTop: '1px solid #E2E8F0' }}>
+              <pre style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '0.74rem', lineHeight: 1.5, margin: 0, color: '#0F172A' }}>
                 {MERMAID_PIPELINE}
-              </div>
-            </div>
-          )}
-
-          {/* View: Flowchart / Cards */}
-          {diagramMode === 'flowchart' && (
-            <div style={{ padding: '2rem', background: '#FFFFFF' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase' }}>Ingestion Tier</div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>Multi-Format Normalizer</h4>
-                  <ul style={{ fontSize: '0.78rem', color: '#475569', marginTop: '8px', lineHeight: 1.6, paddingLeft: '1rem', listStyle: 'disc' }}>
-                    <li>Accepts CSV, JSON, LOG, and XLSX submissions</li>
-                    <li>Streaming chunked parser (50MB+ capable)</li>
-                    <li>Salted pseudonymization of analyst IDs (assignee_hash)</li>
-                  </ul>
-                </div>
-
-                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase' }}>Storage Tier</div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>Forensic Fact Ledger</h4>
-                  <ul style={{ fontSize: '0.78rem', color: '#475569', marginTop: '8px', lineHeight: 1.6, paddingLeft: '1rem', listStyle: 'disc' }}>
-                    <li>Partitioned fact tables for alerts, cases &amp; assets</li>
-                    <li>Incremental daily rollups (alert_daily_agg)</li>
-                    <li>Dynamic DB-backed rule registry &amp; parameter history</li>
-                  </ul>
-                </div>
-
-                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Analytics Tier</div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>Supervisory Detector Engine</h4>
-                  <ul style={{ fontSize: '0.78rem', color: '#475569', marginTop: '8px', lineHeight: 1.6, paddingLeft: '1rem', listStyle: 'disc' }}>
-                    <li>6 Execution Gap Detectors (Fast close, unescalated)</li>
-                    <li>4 Negative Space Reasoners (Silent SCADA, missing threats)</li>
-                    <li>Robust Z-score benchmarking (Median, MAD)</li>
-                  </ul>
-                </div>
-
-                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1.25rem', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase' }}>Supervisory Tier</div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>Decision Support &amp; Audit</h4>
-                  <ul style={{ fontSize: '0.78rem', color: '#475569', marginTop: '8px', lineHeight: 1.6, paddingLeft: '1rem', listStyle: 'disc' }}>
-                    <li>Composite Attention Score ranking (0–100)</li>
-                    <li>Review Portfolio: 85% priority + 15% exploration</li>
-                    <li>Cryptographic SHA-256 hash-chained decision audit</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* View: ASCII */}
-          {diagramMode === 'ascii' && (
-            <div style={{ background: '#0B0F17', color: '#E2E8F0', padding: '1.5rem', overflowX: 'auto', position: 'relative' }}>
-              <button
-                onClick={() => handleCopy(ASCII_PIPELINE)}
-                style={{ position: 'absolute', top: '12px', right: '12px', background: '#1E293B', border: '1px solid #334155', color: '#CBD5E1', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
-              >
-                {copied ? <Check size={12} color="#EF4444" /> : <Copy size={12} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-              <pre style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', lineHeight: 1.45 }}>
-                {ASCII_PIPELINE}
               </pre>
             </div>
           )}
 
-          {/* View: Mermaid */}
-          {diagramMode === 'mermaid' && (
-            <div style={{ background: '#0B0F17', color: '#E2E8F0', padding: '1.5rem', overflowX: 'auto', position: 'relative' }}>
-              <button
-                onClick={() => handleCopy(MERMAID_PIPELINE)}
-                style={{ position: 'absolute', top: '12px', right: '12px', background: '#1E293B', border: '1px solid #334155', color: '#CBD5E1', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}
-              >
-                {copied ? <Check size={12} color="#EF4444" /> : <Copy size={12} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-              <pre style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', lineHeight: 1.45 }}>
-                {MERMAID_PIPELINE}
+          {/* VIEW 3: ASCII Pipeline View */}
+          {diagramMode === 'ascii' && (
+            <div style={{ background: '#F8FAFC', color: '#0F172A', padding: '1.25rem', overflowX: 'auto', borderTop: '1px solid #E2E8F0' }}>
+              <pre style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '0.7rem', lineHeight: 1.45, margin: 0, color: '#0F172A' }}>
+                {ASCII_PIPELINE}
               </pre>
             </div>
           )}

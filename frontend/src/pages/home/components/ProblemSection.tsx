@@ -1,59 +1,125 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
-interface CodeLine {
-  num: string;
-  indent?: number;
-  key?: string;
-  value?: React.ReactNode;
-  isClose?: boolean;
-}
-
-interface ProblemCardData {
-  id: string;
-  filename: string;
-  friction: string;
-  lines: CodeLine[];
-}
-
-const PROBLEM_CARDS: ProblemCardData[] = [
-  {
-    id: 'alert_triage',
-    filename: 'alert_triage.json',
-    friction: 'Headline 98% SLA hides 3-minute zero-step triage',
-    lines: [
-      { num: '01', isClose: true, value: '{' },
-      { num: '02', indent: 1, key: '"alert_id"', value: <span style={{ color: '#059669' }}>"ALT-POWER-1042",</span> },
-      { num: '03', indent: 1, key: '"severity"', value: <span style={{ color: '#DC2626', fontWeight: 600 }}>"CRITICAL",</span> },
-      { num: '04', indent: 1, key: '"category"', value: <span style={{ color: '#059669' }}>"SCADA Modbus Injection",</span> },
-      { num: '05', indent: 1, key: '"created_at"', value: <span style={{ color: '#059669' }}>"2024-10-01T02:14:10Z",</span> },
-      { num: '06', indent: 1, key: '"closed_at"', value: <span style={{ color: '#D97706', fontWeight: 600 }}>"2024-10-01T02:17:20Z",</span> },
-      { num: '07', indent: 1, key: '"steps_count"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>0,</span> },
-      { num: '08', indent: 1, key: '"disposition"', value: <span style={{ color: '#059669' }}>"false_positive",</span> },
-      { num: '09', indent: 1, key: '"closure_reason"', value: <span style={{ color: '#059669' }}>"routine_maintenance"</span> },
-      { num: '10', isClose: true, value: '}' }
-    ]
-  },
-  {
-    id: 'telemetry_health',
-    filename: 'telemetry_health.json',
-    friction: 'Tier-1 critical SCADA asset unmonitored for 42 days',
-    lines: [
-      { num: '01', isClose: true, value: '{' },
-      { num: '02', indent: 1, key: '"asset_id"', value: <span style={{ color: '#059669' }}>"AST-POWER-01",</span> },
-      { num: '03', indent: 1, key: '"asset_type"', value: <span style={{ color: '#059669' }}>"SCADA_CONTROLLER",</span> },
-      { num: '04', indent: 1, key: '"criticality_tier"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>1,</span> },
-      { num: '05', indent: 1, key: '"last_telemetry_received"', value: <span style={{ color: '#059669' }}>"2024-08-20T00:00:00Z",</span> },
-      { num: '06', indent: 1, key: '"endpoint"', value: <span>{'{'}</span> },
-      { num: '07', indent: 2, key: '"ip"', value: <span style={{ color: '#059669' }}>"10.45.2.110",</span> },
-      { num: '08', indent: 2, key: '"port"', value: <span style={{ color: '#7C3AED', fontWeight: 600 }}>502</span> },
-      { num: '09', indent: 1, isClose: true, value: '}' },
-      { num: '10', isClose: true, value: '}' }
-    ]
-  }
-];
-
 export const ProblemSection: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const criticalRef = useRef<HTMLSpanElement>(null);
+  const accessRef = useRef<HTMLSpanElement>(null);
+  const analystRef = useRef<HTMLSpanElement>(null);
+
+  const cardCriticalRef = useRef<HTMLDivElement>(null);
+  const cardAccessRef = useRef<HTMLDivElement>(null);
+  const cardAnalystRef = useRef<HTMLDivElement>(null);
+
+  const [arrows, setArrows] = useState<{
+    critical: { path: string; origin: { x: number; y: number } };
+    access: { path: string; origin: { x: number; y: number } };
+    analyst: { path: string; origin: { x: number; y: number } };
+  } | null>(null);
+
+  useEffect(() => {
+    const calculateArrows = () => {
+      if (!containerRef.current) return;
+      const cRect = containerRef.current.getBoundingClientRect();
+
+      let criticalData = null;
+      let accessData = null;
+      let analystData = null;
+
+      // 1. Critical Token -> Top-Right Card
+      if (criticalRef.current && cardCriticalRef.current) {
+        const k = criticalRef.current.getBoundingClientRect();
+        const card = cardCriticalRef.current.getBoundingClientRect();
+
+        // Origin: top edge of the [CRITICAL] badge
+        const startX = k.left + k.width / 2 - cRect.left;
+        const startY = k.top - cRect.top;
+
+        // Destination: bottom edge of the Top-Right card
+        const endX = card.left + 60 - cRect.left;
+        const endY = card.bottom - cRect.top;
+
+        // Smooth curve heading up and to the right
+        const cp1X = startX + 15;
+        const cp1Y = startY - 45;
+        const cp2X = endX - 40;
+        const cp2Y = endY + 25;
+
+        criticalData = {
+          path: `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`,
+          origin: { x: startX, y: startY }
+        };
+      }
+
+      // 2. Unauthorized Remote Access -> Right Card
+      if (accessRef.current && cardAccessRef.current) {
+        const k = accessRef.current.getBoundingClientRect();
+        const card = cardAccessRef.current.getBoundingClientRect();
+
+        // Origin: right edge of the keyword
+        const startX = k.right - cRect.left + 4;
+        const startY = k.top + k.height / 2 - cRect.top;
+
+        // Destination: left edge of the Right card
+        const endX = card.left - cRect.left;
+        const endY = card.top + card.height / 2 - cRect.top;
+
+        // Smooth curve heading directly right
+        const cp1X = startX + (endX - startX) * 0.45;
+        const cp1Y = startY;
+        const cp2X = startX + (endX - startX) * 0.75;
+        const cp2Y = endY;
+
+        accessData = {
+          path: `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`,
+          origin: { x: startX, y: startY }
+        };
+      }
+
+      // 3. analyst_ANALYST_ -> Left Card
+      if (analystRef.current && cardAnalystRef.current) {
+        const k = analystRef.current.getBoundingClientRect();
+        const card = cardAnalystRef.current.getBoundingClientRect();
+
+        // Origin: left edge of operator / analyst keyword
+        const startX = k.left - cRect.left - 4;
+        const startY = k.top + k.height / 2 - cRect.top;
+
+        // Destination: right edge of the Left card
+        const endX = card.right - cRect.left;
+        const endY = card.top + card.height / 2 - cRect.top;
+
+        // Smooth curve heading left
+        const cp1X = startX - Math.abs(startX - endX) * 0.35;
+        const cp1Y = startY;
+        const cp2X = endX + Math.abs(startX - endX) * 0.35;
+        const cp2Y = endY;
+
+        analystData = {
+          path: `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`,
+          origin: { x: startX, y: startY }
+        };
+      }
+
+      if (criticalData && accessData && analystData) {
+        setArrows({
+          critical: criticalData,
+          access: accessData,
+          analyst: analystData
+        });
+      }
+    };
+
+    // Calculate immediately, after next frame, and on window resize
+    calculateArrows();
+    const rafId = requestAnimationFrame(calculateArrows);
+    window.addEventListener('resize', calculateArrows);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', calculateArrows);
+    };
+  }, []);
+
   return (
     <section id="problem" className="landing-section" style={{ backgroundColor: '#991B1B', color: '#FFFFFF', borderBottom: '1px solid #7F1D1D' }}>
       <div className="landing-content-wrap">
@@ -68,7 +134,7 @@ export const ProblemSection: React.FC = () => {
             <span 
               style={{ 
                 backgroundColor: '#0F172A', 
-                color: '#FFFFFF',
+                color: '#FFFFFF', 
                 padding: '2px 6px', 
                 borderRadius: '0.25rem', 
                 border: '1px solid #1E293B',
@@ -88,7 +154,7 @@ export const ProblemSection: React.FC = () => {
             <span 
               style={{ 
                 backgroundColor: '#FFFFFF', 
-                color: '#991B1B',
+                color: '#991B1B', 
                 padding: '2px 6px', 
                 borderRadius: '0.25rem', 
                 border: '1px solid #F87171',
@@ -108,7 +174,7 @@ export const ProblemSection: React.FC = () => {
             <span 
               style={{ 
                 backgroundColor: '#0F172A', 
-                color: '#FFFFFF',
+                color: '#FFFFFF', 
                 padding: '2px 6px', 
                 borderRadius: '0.25rem', 
                 border: '1px solid #1E293B',
@@ -128,7 +194,7 @@ export const ProblemSection: React.FC = () => {
             <span 
               style={{ 
                 backgroundColor: '#0F172A', 
-                color: '#FFFFFF',
+                color: '#FFFFFF', 
                 padding: '2px 6px', 
                 borderRadius: '0.25rem', 
                 border: '1px solid #1E293B',
@@ -148,119 +214,424 @@ export const ProblemSection: React.FC = () => {
           </p>
         </div>
 
-        {/* 2 Mac-Style Code Window Cards Matching the Reference Design */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.75rem' }}>
-          {PROBLEM_CARDS.map((card) => (
+        {/* Interactive Annotation Stage with Generous Width & Breathing Room */}
+        <div 
+          ref={containerRef}
+          style={{ 
+            position: 'relative', 
+            maxWidth: '86rem', 
+            margin: '0 auto', 
+            width: '100%', 
+            paddingTop: '4.5rem',
+            paddingBottom: '2rem',
+            paddingLeft: '1rem',
+            paddingRight: '1rem'
+          }}
+        >
+          
+          {/* TOP-RIGHT CALLOUT CARD: Critical Alert Tier (3-line comfortable description) */}
+          <div 
+            ref={cardCriticalRef}
+            className="hidden xl:flex"
+            style={{
+              position: 'absolute',
+              top: '-25px',
+              right: '110px',
+              width: '295px',
+              minHeight: '105px',
+              backgroundColor: '#FFFFFF',
+              color: '#0F172A',
+              padding: '0.85rem 1rem',
+              borderRadius: '12px',
+              boxShadow: '0 16px 32px -8px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15)',
+              border: '1.5px solid #CBD5E1',
+              zIndex: 25,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0F172A', display: 'inline-block' }}></span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>[CRITICAL] Alert Tier</span>
+              </div>
+              <span style={{ fontSize: '0.64rem', padding: '2px 7px', background: '#FEE2E2', color: '#991B1B', borderRadius: '4px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>Mandatory Audit</span>
+            </div>
+            <p style={{ fontSize: '0.73rem', color: '#475569', margin: 0, lineHeight: 1.45, whiteSpace: 'normal' }}>
+              High-severity SCADA trigger requiring supervisory L2 sign-off under national standard.
+            </p>
+          </div>
+
+          {/* LEFT CALLOUT CARD: Single-Analyst Closure (3-line comfortable description) */}
+          <div 
+            ref={cardAnalystRef}
+            className="hidden xl:flex"
+            style={{
+              position: 'absolute',
+              top: '40%',
+              left: '-35px',
+              transform: 'translateY(-50%)',
+              width: '310px',
+              minHeight: '105px',
+              backgroundColor: '#FFFFFF',
+              color: '#0F172A',
+              padding: '0.85rem 1rem',
+              borderRadius: '12px',
+              boxShadow: '0 16px 32px -8px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15)',
+              border: '1.5px solid #CBD5E1',
+              zIndex: 25,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>Single-Analyst Closure</span>
+              </div>
+              <span style={{ fontSize: '0.64rem', padding: '2px 7px', background: '#D1FAE5', color: '#065F46', borderRadius: '4px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>Zero Oversight</span>
+            </div>
+            <p style={{ fontSize: '0.73rem', color: '#475569', margin: 0, lineHeight: 1.45, whiteSpace: 'normal' }}>
+              Closed by solo operator without four-eyes peer verification or recorded forensic audit notes.
+            </p>
+          </div>
+
+          {/* RIGHT CALLOUT CARD: SCADA Threat Signature (3-line comfortable description) */}
+          <div 
+            ref={cardAccessRef}
+            className="hidden xl:flex"
+            style={{
+              position: 'absolute',
+              top: '52%',
+              right: '-35px',
+              transform: 'translateY(-50%)',
+              width: '325px',
+              minHeight: '105px',
+              backgroundColor: '#FFFFFF',
+              color: '#0F172A',
+              padding: '0.85rem 1rem',
+              borderRadius: '12px',
+              boxShadow: '0 16px 32px -8px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15)',
+              border: '1.5px solid #CBD5E1',
+              zIndex: 25,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563EB', display: 'inline-block' }}></span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>SCADA Threat Signature</span>
+              </div>
+              <span style={{ fontSize: '0.64rem', padding: '2px 7px', background: '#DBEAFE', color: '#1E40AF', borderRadius: '4px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>Telemetry Alert</span>
+            </div>
+            <p style={{ fontSize: '0.73rem', color: '#475569', margin: 0, lineHeight: 1.45, whiteSpace: 'normal' }}>
+              Malicious command injection detected on power transmission controller telemetry stream.
+            </p>
+          </div>
+
+          {/* SVG Pointer Arrows Layer - Originating strictly from keywords, pointing to cards */}
+          <svg 
+            className="hidden xl:block"
+            style={{ 
+              position: 'absolute', 
+              inset: 0, 
+              width: '100%', 
+              height: '100%', 
+              pointerEvents: 'none', 
+              zIndex: 20 
+            }}
+          >
+            <defs>
+              {/* Arrowheads pointing at the destination cards */}
+              <marker id="marker-slate" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto">
+                <polygon points="0 0, 9 4.5, 0 9" fill="#0F172A" />
+              </marker>
+              <marker id="marker-blue" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto">
+                <polygon points="0 0, 9 4.5, 0 9" fill="#2563EB" />
+              </marker>
+              <marker id="marker-green" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto">
+                <polygon points="0 0, 9 4.5, 0 9" fill="#10B981" />
+              </marker>
+            </defs>
+
+            {arrows && (
+              <>
+                {/* 1. Critical Token -> Top-Right Card */}
+                {/* Origin Dot on [CRITICAL] */}
+                <circle cx={arrows.critical.origin.x} cy={arrows.critical.origin.y} r="4" fill="#0F172A" />
+                <path 
+                  d={arrows.critical.path} 
+                  fill="none" 
+                  stroke="#0F172A" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="5 3.5"
+                  markerEnd="url(#marker-slate)" 
+                />
+
+                {/* 2. Unauthorized Remote Access -> Right Card */}
+                {/* Origin Dot on keyword */}
+                <circle cx={arrows.access.origin.x} cy={arrows.access.origin.y} r="4" fill="#2563EB" />
+                <path 
+                  d={arrows.access.path} 
+                  fill="none" 
+                  stroke="#2563EB" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="5 3.5"
+                  markerEnd="url(#marker-blue)" 
+                />
+
+                {/* 3. analyst_ANALYST_ -> Left Card (Bolder Green Arrow) */}
+                {/* Origin Dot on keyword */}
+                <circle cx={arrows.analyst.origin.x} cy={arrows.analyst.origin.y} r="4" fill="#10B981" />
+                <path 
+                  d={arrows.analyst.path} 
+                  fill="none" 
+                  stroke="#10B981" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="5 3.5"
+                  markerEnd="url(#marker-green)" 
+                />
+              </>
+            )}
+          </svg>
+
+          {/* Centered Light-Mode Audit Terminal Window */}
+          <div style={{ maxWidth: '38.5rem', margin: '0 auto', width: '100%', position: 'relative', zIndex: 10 }}>
             <div 
-              key={card.id} 
               style={{
                 background: '#FFFFFF',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)'
+                boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.3), 0 10px 15px -5px rgba(0, 0, 0, 0.15)',
+                border: '1px solid #E2E8F0',
+                width: '100%'
               }}
             >
-              {/* Window Header with 3 colored dots & filename */}
+              {/* Terminal Window Header */}
               <div 
                 style={{
-                  padding: '1rem 1.25rem 0.75rem 1.25rem',
-                  background: '#FFFFFF',
+                  padding: '0.75rem 1rem',
+                  background: '#F8FAFC',
+                  borderBottom: '1px solid #E2E8F0',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '0.75rem'
                 }}
               >
-                {/* 3 Mac Dots */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#EF4444' }}></span>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+                {/* 3 Dots & Terminal Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#EF4444' }}></span>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+                  </div>
+                  <span 
+                    style={{ 
+                      fontSize: '0.72rem', 
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      fontWeight: 600,
+                      color: '#475569',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    audit-terminal ~ tail -f forensic_stream.log
+                  </span>
                 </div>
-                {/* Filename */}
+
+                {/* Standard Badge */}
                 <span 
                   style={{ 
-                    fontSize: '0.875rem', 
-                    fontWeight: 600, 
-                    color: '#0F172A', 
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    marginLeft: '4px'
+                    fontSize: '0.65rem',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    backgroundColor: '#EDE9FE',
+                    color: '#6D28D9',
+                    borderRadius: '6px',
+                    border: '1px solid #DDD6FE',
+                    flexShrink: 0
                   }}
                 >
-                  {card.filename}
+                  RFC 5424
                 </span>
               </div>
 
-              {/* Code Container with exact reference typography */}
+              {/* Terminal Light Screen with Dark Log Lines */}
               <div 
                 style={{
-                  padding: '0.5rem 1.5rem 1.5rem 1.5rem',
+                  padding: '1.1rem 1.25rem',
                   background: '#FFFFFF',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                  fontSize: '0.875rem',
-                  lineHeight: '1.8',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontSize: '0.76rem',
+                  lineHeight: '1.65',
                   flex: 1,
                   display: 'flex',
-                  flexDirection: 'column'
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  overflowX: 'auto'
                 }}
               >
-                {card.lines.map((line, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center' }}>
-                    {/* Line Number */}
-                    <span 
-                      style={{ 
-                        width: '36px', 
-                        color: '#94A3B8', 
-                        fontSize: '0.8rem', 
-                        userSelect: 'none',
-                        flexShrink: 0,
-                        fontWeight: 400
-                      }}
-                    >
-                      {line.num}
-                    </span>
-                    {/* Code Content */}
-                    <div 
-                      style={{ 
-                        flex: 1, 
-                        whiteSpace: 'nowrap', 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis',
-                        color: '#0F172A',
-                        paddingLeft: line.indent ? `${line.indent * 1.25}rem` : '0'
-                      }}
-                    >
-                      {line.key && (
-                        <span style={{ color: '#0284C7', fontWeight: 600, marginRight: '6px' }}>
-                          {line.key}:
-                        </span>
-                      )}
-                      {line.value}
+                {/* Primary Command & Output */}
+                <div>
+                  <div style={{ color: '#059669', fontWeight: 800, marginBottom: '4px', fontSize: '0.78rem' }}>
+                    <span>$ syslog</span>{' '}
+                    <span style={{ color: '#0284C7', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--stream</span>{' '}
+                    <span style={{ color: '#475569' }}>--record=</span>
+                    <span style={{ color: '#991B1B', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>alt_CSE-POWER-01_4</span>
+                  </div>
+                  <div style={{ borderLeft: '2px solid #CBD5E1', paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ color: '#0F172A', fontWeight: 500, wordBreak: 'break-word' }}>
+                      <span style={{ color: '#64748B' }}>2026-10-01T02:14:10.120Z</span>{' '}
+                      <span 
+                        ref={criticalRef}
+                        style={{ 
+                          backgroundColor: '#991B1B', 
+                          color: '#FFFFFF', 
+                          fontWeight: 800, 
+                          padding: '1px 6px', 
+                          borderRadius: '4px',
+                          textDecoration: 'underline',
+                          textUnderlineOffset: '2px',
+                          textDecorationColor: '#FECACA',
+                          display: 'inline-block'
+                        }}
+                      >
+                        [CRITICAL]
+                      </span>{' '}
+                      <span style={{ color: '#1E40AF', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CSE-POWER-01</span>{' '}
+                      <span style={{ color: '#64748B' }}>(ast_CSE-POWER-01_5):</span>{' '}
+                      <span 
+                        ref={accessRef}
+                        style={{ 
+                          backgroundColor: '#2563EB',
+                          color: '#FFFFFF', 
+                          fontWeight: 700, 
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          textDecoration: 'underline', 
+                          textUnderlineOffset: '2px', 
+                          textDecorationColor: '#BFDBFE',
+                          display: 'inline-block'
+                        }}
+                      >
+                        Unauthorized Remote Access
+                      </span>{' '}
+                      <span style={{ color: '#64748B' }}>|</span>{' '}
+                      <span style={{ color: '#475569' }}>disposition=</span>
+                      <span style={{ color: '#059669', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>true_positive</span>{' '}
+                      <span style={{ color: '#475569' }}>closed_at=</span>
+                      <span style={{ color: '#D97706', fontWeight: 600 }}>2026-10-01T02:17:20.381Z</span>{' '}
+                      <span style={{ color: '#475569' }}>operator=</span>
+                      <span 
+                        ref={analystRef}
+                        style={{ 
+                          backgroundColor: '#10B981',
+                          color: '#FFFFFF', 
+                          fontWeight: 700, 
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          textDecoration: 'underline', 
+                          textUnderlineOffset: '2px',
+                          textDecorationColor: '#A7F3D0',
+                          display: 'inline-block'
+                        }}
+                      >
+                        analyst_ANALYST_
+                      </span>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Sub Command & Output */}
+                <div>
+                  <div style={{ color: '#0284C7', fontWeight: 800, marginBottom: '4px', fontSize: '0.78rem' }}>
+                    <span>$ csvcut</span>{' '}
+                    <span style={{ color: '#475569', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--columns</span>
+                    <span style={{ color: '#64748B' }}>=ID,Category,Severity,Created,Closed,Operator</span>
+                  </div>
+                  <div style={{ borderLeft: '2px solid #CBD5E1', paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ color: '#334155', fontWeight: 500, wordBreak: 'break-word' }}>
+                      <span style={{ color: '#991B1B', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>alt_CSE-POWER-01_4</span>
+                      <span style={{ color: '#64748B' }}>,</span>
+                      <span style={{ 
+                        backgroundColor: '#2563EB', 
+                        color: '#FFFFFF', 
+                        fontWeight: 600, 
+                        padding: '1px 6px', 
+                        borderRadius: '4px',
+                        textDecoration: 'underline', 
+                        textUnderlineOffset: '2px', 
+                        textDecorationColor: '#BFDBFE',
+                        display: 'inline-block'
+                      }}>
+                        "Unauthorized Remote Access"
+                      </span>
+                      <span style={{ color: '#64748B' }}>,</span>
+                      <span style={{ color: '#DC2626', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CRITICAL</span>
+                      <span style={{ color: '#64748B' }}>,02:14:10Z,02:17:20Z,</span>
+                      <span style={{ 
+                        backgroundColor: '#10B981', 
+                        color: '#FFFFFF', 
+                        fontWeight: 700, 
+                        padding: '1px 6px', 
+                        borderRadius: '4px',
+                        textDecoration: 'underline', 
+                        textUnderlineOffset: '2px', 
+                        textDecorationColor: '#A7F3D0',
+                        display: 'inline-block'
+                      }}>
+                        analyst_ANALYST_
+                      </span>
+                      <span style={{ color: '#64748B' }}>,ast_CSE-POWER-01_5</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Card Footer with Highlight Flag */}
+              {/* Card Footer with Highlight Warning */}
               <div 
                 style={{
-                  padding: '0.75rem 1.25rem',
+                  padding: '0.75rem 1.15rem',
                   background: '#FEF2F2',
                   borderTop: '1px solid #FEE2E2',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
-                <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                <AlertTriangle size={15} color="#DC2626" style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#991B1B' }}>
-                  {card.friction}
+                  Headline 98% SLA hides 3-minute zero-step triage
                 </span>
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Mobile/Tablet Fallback Cards (Visible on screens < xl, cleanly stacked below terminal) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 xl:hidden">
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-bold text-slate-900 block">[CRITICAL] Alert Tier</span>
+              <span className="text-[11px] text-slate-600">High-severity SCADA trigger requiring supervisory L2 sign-off under national standard.</span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-bold text-blue-700 block">SCADA Threat Signature</span>
+              <span className="text-[11px] text-slate-600">Malicious command injection on power transmission controller telemetry.</span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-xs font-bold text-emerald-700 block">Single-Analyst Closure</span>
+              <span className="text-[11px] text-slate-600">Closed by solo operator without four-eyes peer verification or notes.</span>
+            </div>
+          </div>
+
         </div>
 
       </div>

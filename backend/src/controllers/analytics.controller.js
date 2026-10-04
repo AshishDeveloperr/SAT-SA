@@ -70,3 +70,37 @@ export async function getValidationMetrics(req, res) {
     }
   });
 }
+
+/**
+ * 4. Get Air-Gapped Local Copilot (Ollama) Status
+ * GET /api/v1/copilot/status
+ */
+export async function getCopilotStatus(req, res) {
+  const { getOllamaStatus } = await import('../modules/analytics/localCopilot.js');
+  const status = await getOllamaStatus();
+  res.json({ data: status });
+}
+
+/**
+ * 5. Generate Statutory Supervisory Inspection Narrative
+ * POST /api/v1/copilot/briefing
+ */
+export async function generateCopilotBriefing(req, res) {
+  const { generateSupervisoryNarrative } = await import('../modules/analytics/localCopilot.js');
+  const payload = req.body || {};
+  const result = await generateSupervisoryNarrative(payload);
+  res.json({ data: result });
+}
+
+/**
+ * 6. Generate Peer Comparison Supervisory Synthesis
+ * POST /api/v1/copilot/peer-synthesis
+ */
+export async function generateCopilotPeerSynthesis(req, res) {
+  const { generatePeerComparisonNarrative } = await import('../modules/analytics/localCopilot.js');
+  const payload = req.body || {};
+  const result = await generatePeerComparisonNarrative(payload);
+  res.json({ data: result });
+}
+
+

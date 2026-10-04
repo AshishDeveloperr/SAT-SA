@@ -4,7 +4,7 @@ import { Shield, Lock } from 'lucide-react';
 export const LandingFooter: React.FC = () => {
   return (
     <footer style={{ background: '#0B0F19', color: '#94A3B8', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '3.5rem 1.5rem 2.5rem' }}>
-      <div style={{ maxWidth: '64rem', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem' }}>
+      <div style={{ maxWidth: '76.8rem', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ background: 'rgba(153,27,27,0.15)', border: '1px solid rgba(153,27,27,0.4)', padding: '8px', borderRadius: '8px', color: '#EF4444' }}>
             <Shield size={20} />
