@@ -1279,7 +1279,7 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
               onClick={onNavigateToDashboard}
               className="text-xs font-bold text-blue-800 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>View Executive Dashboard</span>
+              <span>View Dashboard</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}
@@ -1474,7 +1474,7 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
                     onClick={onNavigateToDashboard}
                     className="px-4 py-2 bg-red-800 hover:bg-red-900 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition shrink-0 cursor-pointer"
                   >
-                    <span>Open in Executive Dashboard</span>
+                    <span>Open in Dashboard</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
