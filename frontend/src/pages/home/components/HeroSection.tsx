@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, LayoutDashboard } from 'lucide-react';
+import { ArrowUpRight, LayoutDashboard, Scale, EyeOff, ShieldCheck, Lock } from 'lucide-react';
 
 interface HeroSectionProps {
   onOpenConsole?: () => void;
@@ -101,7 +101,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsole, onOpenS
         </p>
 
         {/* Action buttons (Exactly two: Dashboard & GitHub) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '3.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
           {/* 1. Dashboard Button */}
           <button
             onClick={onOpenConsole}
@@ -154,6 +154,89 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsole, onOpenS
             </svg>
             <span>GitHub</span>
           </a>
+        </div>
+
+        {/* 4-Pillar Mandate Cards: Prominent, Elegant & In One Single Line */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 overflow-x-auto">
+          {/* Pillar 1: Execution Gaps */}
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between hover:border-red-400 hover:shadow-sm transition-all duration-200 group">
+            <div>
+              <div className="flex items-center justify-between gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="p-1.5 rounded-lg bg-red-50 text-[#991B1B] shrink-0">
+                    <Scale size={16} />
+                  </span>
+                  <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 tracking-tight whitespace-nowrap">Execution Gaps</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-[#991B1B] whitespace-nowrap shrink-0">
+                  6 Detectors
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-700 leading-relaxed font-normal">
+                Surfaces 3-min closures, duplicate notes &amp; metric-satisficing triage behavior.
+              </p>
+            </div>
+          </div>
+
+          {/* Pillar 2: Negative Space */}
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between hover:border-purple-400 hover:shadow-sm transition-all duration-200 group">
+            <div>
+              <div className="flex items-center justify-between gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="p-1.5 rounded-lg bg-purple-50 text-purple-800 shrink-0">
+                    <EyeOff size={16} />
+                  </span>
+                  <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 tracking-tight whitespace-nowrap">Negative Space</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 whitespace-nowrap shrink-0">
+                  5 Reasoners
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-700 leading-relaxed font-normal">
+                Unmasks silent SCADA/core nodes &amp; missing expected telemetry signals &gt;14 days.
+              </p>
+            </div>
+          </div>
+
+          {/* Pillar 3: 8 Resilience Capabilities */}
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition-all duration-200 group">
+            <div>
+              <div className="flex items-center justify-between gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-800 shrink-0">
+                    <ShieldCheck size={16} />
+                  </span>
+                  <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 tracking-tight whitespace-nowrap">8 Cyber Capabilities</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 whitespace-nowrap shrink-0">
+                  0–100 Index
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-700 leading-relaxed font-normal">
+                Bayesian scoring assessing Detection, Investigation, Escalation &amp; IR rigor.
+              </p>
+            </div>
+          </div>
+
+          {/* Pillar 4: Air-Gapped Deployment Invariant */}
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between hover:border-emerald-400 hover:shadow-sm transition-all duration-200 group">
+            <div>
+              <div className="flex items-center justify-between gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 shrink-0">
+                    <Lock size={16} />
+                  </span>
+                  <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 tracking-tight whitespace-nowrap">Air-Gapped Invariant</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 whitespace-nowrap shrink-0">
+                  100% Offline
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-700 leading-relaxed font-normal">
+                Zero cloud dependencies, on-premise local Ollama AI &amp; Section 65B chained ledger.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
