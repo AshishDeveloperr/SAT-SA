@@ -119,7 +119,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           onClick={onRegenerateSynth}
           disabled={isLoading}
           title="Reset synthetic data corpus"
-          className="w-full flex items-center justify-center space-x-1.5 text-xs bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 px-3 py-2 rounded-lg font-bold shadow-sm transition hover:scale-[1.01] active:scale-95 disabled:opacity-50 cursor-pointer"
+          className="w-full flex items-center justify-center space-x-1.5 text-xs bg-white/10 hover:bg-white/15 text-slate-200 border border-transparent px-3 py-2 rounded-lg font-bold shadow-sm transition hover:scale-[1.01] active:scale-95 disabled:opacity-50 cursor-pointer"
         >
           <Database className="w-3.5 h-3.5 text-[#EF4444]" />
           <span>Reset</span>

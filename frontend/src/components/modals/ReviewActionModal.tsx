@@ -74,7 +74,7 @@ export function ReviewActionModal({
       onClick={() => !isSubmitting && onClose()}
     >
       <div 
-        className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full shadow-2xl flex flex-col text-slate-900 overflow-hidden"
+        className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl flex flex-col text-slate-900 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -82,7 +82,7 @@ export function ReviewActionModal({
           decision === 'confirmed' ? 'bg-[#991B1B]' : 'bg-slate-800'
         }`}>
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center border border-white/20">
+            <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center">
               {decision === 'confirmed' ? (
                 <ShieldAlert className="w-4 h-4 text-white" />
               ) : (

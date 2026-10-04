@@ -26,11 +26,11 @@ export function AuditDocketModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="bg-[#991B1B] text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <span className="text-xs font-mono font-black bg-white/20 text-white px-2.5 py-1 rounded-lg border border-white/20">
+            <span className="text-xs font-mono font-black bg-white/20 text-white px-2.5 py-1 rounded-lg">
               Block #{activeRecord.id}
             </span>
             <div>

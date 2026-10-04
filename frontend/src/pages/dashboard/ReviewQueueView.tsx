@@ -392,14 +392,14 @@ export const ReviewQueueView: React.FC<ReviewQueueViewProps> = ({
           onClick={() => setSelectedQueueEntity(null)}
         >
           <div 
-            className="w-full sm:w-[85vw] md:w-[70vw] lg:w-[60vw] h-full bg-white shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300 text-slate-900"
+            className="w-full sm:w-[85vw] md:w-[70vw] lg:w-[60vw] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 text-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header (Theme Red) */}
             <div className="bg-[#991B1B] text-white p-5 border-b border-red-800/80 flex items-start justify-between shrink-0 shadow-md">
               <div className="space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-black/30 text-white border border-white/20 tracking-wide">
+                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-black/30 text-white tracking-wide">
                     {activeEntityQueueGroup.entityCode}
                   </span>
                   <span className="text-xs font-bold text-red-100">
@@ -413,11 +413,11 @@ export const ReviewQueueView: React.FC<ReviewQueueViewProps> = ({
                   </span>
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-red-100 pt-1">
-                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 border border-white/15 text-[11px] font-medium">
+                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 text-[11px] font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
                     <span>{activeEntityQueueGroup.priorityCount} Priority Targets</span>
                   </span>
-                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 border border-white/15 text-[11px] font-medium">
+                  <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-black/25 text-[11px] font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
                     <span>{activeEntityQueueGroup.explorationCount} Exploration Quota</span>
                   </span>

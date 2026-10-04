@@ -94,24 +94,24 @@ export const SilentAssetDetailModal: React.FC<SilentAssetDetailModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col text-slate-900"
+        className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ================= 1. MODAL HEADER (THEME RED) ================= */}
         <div className="bg-[#991B1B] text-white p-4 sm:p-5 border-b border-red-800/80 flex items-start justify-between flex-shrink-0 rounded-t-2xl shadow-md">
           <div className="flex items-start space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-black/25 border border-white/20 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-black/25 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
               <EyeOff className="w-4 h-4 text-white" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-mono text-[11px] font-black px-2 py-0.5 rounded bg-black/30 text-white border border-white/20">
+                <span className="font-mono text-[11px] font-black px-2 py-0.5 rounded bg-black/30 text-white">
                   {asset.external_id}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/20 text-white uppercase border border-white/20">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/20 text-white uppercase">
                   {asset.entityCode}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400 text-slate-900 border border-amber-300">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400 text-slate-900">
                   Tier 1 (Mission Critical)
                 </span>
               </div>

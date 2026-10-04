@@ -673,11 +673,11 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
       {/* ================= COMPUTE PROGRESS POPUP MODAL (PORTALED TO BODY FOR TRUE FULLSCREEN) ================= */}
       {isComputeModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 to-slate-800 text-white shrink-0">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-white text-emerald-600 border border-white/20 shadow-sm flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-white text-emerald-600 shadow-sm flex items-center justify-center shrink-0">
                   {computeProgress === 100 ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
                   ) : (

@@ -235,8 +235,8 @@ export const ProblemSection: React.FC = () => {
             className="hidden xl:flex"
             style={{
               position: 'absolute',
-              top: '-25px',
-              right: '110px',
+              top: '-48px',
+              right: '160px',
               width: '295px',
               minHeight: '105px',
               backgroundColor: '#FFFFFF',
@@ -482,15 +482,15 @@ export const ProblemSection: React.FC = () => {
               >
                 {/* Primary Command & Output */}
                 <div>
-                  <div style={{ color: '#059669', fontWeight: 800, marginBottom: '4px', fontSize: '0.78rem' }}>
+                  <div style={{ color: '#047857', fontWeight: 800, marginBottom: '6px', fontSize: '0.8rem' }}>
                     <span>$ syslog</span>{' '}
-                    <span style={{ color: '#0284C7', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--stream</span>{' '}
-                    <span style={{ color: '#475569' }}>--record=</span>
+                    <span style={{ color: '#0369A1', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--stream</span>{' '}
+                    <span style={{ color: '#0F172A' }}>--record=</span>
                     <span style={{ color: '#991B1B', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>alt_CSE-POWER-01_4</span>
                   </div>
-                  <div style={{ borderLeft: '2px solid #CBD5E1', paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ color: '#0F172A', fontWeight: 500, wordBreak: 'break-word' }}>
-                      <span style={{ color: '#64748B' }}>2026-10-01T02:14:10.120Z</span>{' '}
+                  <div style={{ borderLeft: '3px solid #94A3B8', paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ color: '#0F172A', fontWeight: 600, wordBreak: 'break-word' }}>
+                      <span style={{ color: '#1E293B' }}>2026-10-01T02:14:10.120Z</span>{' '}
                       <span 
                         ref={criticalRef}
                         style={{ 
@@ -498,21 +498,21 @@ export const ProblemSection: React.FC = () => {
                           color: '#FFFFFF', 
                           fontWeight: 800, 
                           padding: '1px 6px', 
-                          borderRadius: '4px',
-                          textDecoration: 'underline',
-                          textUnderlineOffset: '2px',
+                          borderRadius: '4px', 
+                          textDecoration: 'underline', 
+                          textUnderlineOffset: '2px', 
                           textDecorationColor: '#FECACA',
                           display: 'inline-block'
                         }}
                       >
                         [CRITICAL]
                       </span>{' '}
-                      <span style={{ color: '#1E40AF', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CSE-POWER-01</span>{' '}
-                      <span style={{ color: '#64748B' }}>(ast_CSE-POWER-01_5):</span>{' '}
+                      <span style={{ color: '#1E3A8A', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CSE-POWER-01</span>{' '}
+                      <span style={{ color: '#1E293B' }}>(ast_CSE-POWER-01_5):</span>{' '}
                       <span 
                         ref={accessRef}
                         style={{ 
-                          backgroundColor: '#2563EB',
+                          backgroundColor: '#1D4ED8',
                           color: '#FFFFFF', 
                           fontWeight: 700, 
                           padding: '1px 6px',
@@ -525,18 +525,18 @@ export const ProblemSection: React.FC = () => {
                       >
                         Unauthorized Remote Access
                       </span>{' '}
-                      <span style={{ color: '#64748B' }}>|</span>{' '}
-                      <span style={{ color: '#475569' }}>disposition=</span>
-                      <span style={{ color: '#059669', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>true_positive</span>{' '}
-                      <span style={{ color: '#475569' }}>closed_at=</span>
-                      <span style={{ color: '#D97706', fontWeight: 600 }}>2026-10-01T02:17:20.381Z</span>{' '}
-                      <span style={{ color: '#475569' }}>operator=</span>
+                      <span style={{ color: '#0F172A', fontWeight: 800 }}>|</span>{' '}
+                      <span style={{ color: '#0F172A' }}>disposition=</span>
+                      <span style={{ color: '#047857', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>true_positive</span>{' '}
+                      <span style={{ color: '#0F172A' }}>closed_at=</span>
+                      <span style={{ color: '#B45309', fontWeight: 700 }}>2026-10-01T02:17:20.381Z</span>{' '}
+                      <span style={{ color: '#0F172A' }}>operator=</span>
                       <span 
                         ref={analystRef}
                         style={{ 
-                          backgroundColor: '#10B981',
+                          backgroundColor: '#059669',
                           color: '#FFFFFF', 
-                          fontWeight: 700, 
+                          fontWeight: 800, 
                           padding: '1px 6px',
                           borderRadius: '4px',
                           textDecoration: 'underline', 
@@ -553,19 +553,19 @@ export const ProblemSection: React.FC = () => {
 
                 {/* Sub Command & Output */}
                 <div>
-                  <div style={{ color: '#0284C7', fontWeight: 800, marginBottom: '4px', fontSize: '0.78rem' }}>
+                  <div style={{ color: '#0369A1', fontWeight: 800, marginBottom: '6px', fontSize: '0.8rem' }}>
                     <span>$ csvcut</span>{' '}
-                    <span style={{ color: '#475569', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--columns</span>
-                    <span style={{ color: '#64748B' }}>=ID,Category,Severity,Created,Closed,Operator</span>
+                    <span style={{ color: '#0F172A', textDecoration: 'underline', textUnderlineOffset: '3px' }}>--columns</span>
+                    <span style={{ color: '#1E293B' }}>=ID,Category,Severity,Created,Closed,Operator</span>
                   </div>
-                  <div style={{ borderLeft: '2px solid #CBD5E1', paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ color: '#334155', fontWeight: 500, wordBreak: 'break-word' }}>
-                      <span style={{ color: '#991B1B', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '3px' }}>alt_CSE-POWER-01_4</span>
-                      <span style={{ color: '#64748B' }}>,</span>
+                  <div style={{ borderLeft: '3px solid #94A3B8', paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ color: '#0F172A', fontWeight: 600, wordBreak: 'break-word' }}>
+                      <span style={{ color: '#991B1B', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>alt_CSE-POWER-01_4</span>
+                      <span style={{ color: '#0F172A', fontWeight: 800 }}>, </span>
                       <span style={{ 
-                        backgroundColor: '#2563EB', 
+                        backgroundColor: '#1D4ED8', 
                         color: '#FFFFFF', 
-                        fontWeight: 600, 
+                        fontWeight: 700, 
                         padding: '1px 6px', 
                         borderRadius: '4px',
                         textDecoration: 'underline', 
@@ -575,13 +575,13 @@ export const ProblemSection: React.FC = () => {
                       }}>
                         "Unauthorized Remote Access"
                       </span>
-                      <span style={{ color: '#64748B' }}>,</span>
-                      <span style={{ color: '#DC2626', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CRITICAL</span>
-                      <span style={{ color: '#64748B' }}>,02:14:10Z,02:17:20Z,</span>
+                      <span style={{ color: '#0F172A', fontWeight: 800 }}>, </span>
+                      <span style={{ color: '#B91C1C', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: '3px' }}>CRITICAL</span>
+                      <span style={{ color: '#1E293B', fontWeight: 600 }}>, 02:14:10Z, 02:17:20Z, </span>
                       <span style={{ 
-                        backgroundColor: '#10B981', 
+                        backgroundColor: '#059669', 
                         color: '#FFFFFF', 
-                        fontWeight: 700, 
+                        fontWeight: 800, 
                         padding: '1px 6px', 
                         borderRadius: '4px',
                         textDecoration: 'underline', 
@@ -591,7 +591,7 @@ export const ProblemSection: React.FC = () => {
                       }}>
                         analyst_ANALYST_
                       </span>
-                      <span style={{ color: '#64748B' }}>,ast_CSE-POWER-01_5</span>
+                      <span style={{ color: '#1E293B' }}>, ast_CSE-POWER-01_5</span>
                     </div>
                   </div>
                 </div>

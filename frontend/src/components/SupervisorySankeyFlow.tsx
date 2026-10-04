@@ -1,5 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Layers } from 'lucide-react';
+import { 
+  Layers, 
+  FileJson, 
+  FileSpreadsheet, 
+  HardDrive, 
+  Cpu, 
+  ShieldCheck, 
+  Scale, 
+  EyeOff, 
+  CheckCircle2, 
+  BarChart3, 
+  ListFilter, 
+  Bot, 
+  BookLock 
+} from 'lucide-react';
 
 export interface SupervisorySankeyFlowProps {
   totalAlerts?: number;
@@ -17,7 +31,7 @@ interface SankeyNode {
   id: string;
   label: string;
   sublabel: string;
-  category: 'input' | 'normalize' | 'engine' | 'scoring' | 'governance';
+  category: 'input' | 'normalize' | 'engine' | 'scoring' | 'ai' | 'governance';
   col: number;
   row: number;
   totalVolume: string;
@@ -34,8 +48,8 @@ interface SankeyLink {
 }
 
 export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
-  totalAlerts = 49999,
-  totalCases = 24999,
+  totalAlerts = 535500,
+  totalCases = 128400,
   totalAssets = 160,
   executionGapsCount = 2,
   silentAssetsCount = 3,
@@ -45,7 +59,7 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
   entityCode = 'CSE-TELCO-01'
 }) => {
   // Compute realistic dynamic volumes based on live ingestion
-  const total = totalAlerts > 0 ? totalAlerts : 49999;
+  const total = totalAlerts > 0 ? totalAlerts : 535500;
   const jsonVol = Math.round(total * 0.35);
   const csvVol = Math.round(total * 0.55);
   const airGapVol = Math.max(0, total - jsonVol - csvVol);
@@ -173,14 +187,27 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
       details: 'Priority sampling portfolio ranking high-risk carrier anomalies for human examiner manual inspection.' 
     },
 
-    // Col 4: Governance Sink
+    // Col 4: Air-Gapped AI Copilot
+    { 
+      id: 'eng_ai', 
+      label: 'Air-Gapped AI Copilot', 
+      sublabel: 'Local LLM (Ollama)', 
+      category: 'ai', 
+      col: 4, 
+      row: 1.6, 
+      totalVolume: '100% Offline AI', 
+      color: '#DC2626', 
+      details: 'Local on-premise LLM reasoning engine synthesizing root-cause narratives, audit questions, and statutory draft findings without cloud egress.' 
+    },
+
+    // Col 5: Governance Sink
     { 
       id: 'gov_ledger', 
       label: 'Section 65B Ledger', 
       sublabel: 'SHA-256 Decision Chain', 
       category: 'governance', 
-      col: 4, 
-      row: 1.2, 
+      col: 5, 
+      row: 0.9, 
       totalVolume: 'Court Admissible', 
       color: '#7F1D1D', 
       details: 'Tamper-evident cryptographic ledger with sequential SHA-256 hash chaining guaranteeing court admissibility under statutory rules.' 
@@ -198,15 +225,16 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
     { source: 'eng_eg', target: 'score_comp', volume: `${egDefects} Patterns`, pct: '100%', formula: '0.6·Max(Dim) + 0.4·Avg(Dim)' },
     { source: 'eng_ns', target: 'score_comp', volume: `${nsBlindspots} Blindspots`, pct: '100%', formula: 'Severe Blindspot Weighting' },
     { source: 'score_comp', target: 'score_queue', volume: `${reviewQueueCount} Samples`, pct: '3.42× Lift', formula: '85% Risk-Targeted + 15% Exploration' },
-    { source: 'score_queue', target: 'gov_ledger', volume: 'Court Ledger', pct: '100%', formula: 'H_n = SHA-256(H_{n-1} || Action)' }
+    { source: 'score_queue', target: 'eng_ai', volume: `${reviewQueueCount} Flags`, pct: '100%', formula: 'Local Inference (Zero Egress)' },
+    { source: 'eng_ai', target: 'gov_ledger', volume: 'Court Ledger', pct: '100%', formula: 'H_n = SHA-256(H_{n-1} || Action)' }
   ], [total, jsonVol, csvVol, airGapVol, egDefects, nsBlindspots, cleanCount, reviewQueueCount]);
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<SankeyNode | null>(nodes[0]);
 
-  // Coordinate geometry
-  const colX = [30, 240, 470, 730, 970];
-  const nodeW = 165;
+  // Coordinate geometry across 6 columns
+  const colX = [20, 215, 410, 620, 830, 1035];
+  const nodeW = 160;
   const nodeH = 56;
 
   const getNodePos = (node: SankeyNode) => {
@@ -232,8 +260,40 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
     return link.source === hoveredNode || link.target === hoveredNode;
   };
 
+  // Helper to map node ID to dedicated SVG Icon
+  const getNodeIcon = (nodeId: string) => {
+    switch (nodeId) {
+      case 'sub_json':
+        return <FileJson className="w-4 h-4 text-white" />;
+      case 'sub_csv':
+        return <FileSpreadsheet className="w-4 h-4 text-white" />;
+      case 'sub_enclave':
+        return <HardDrive className="w-4 h-4 text-white" />;
+      case 'norm_chunk':
+        return <Cpu className="w-4 h-4 text-white" />;
+      case 'norm_privacy':
+        return <ShieldCheck className="w-4 h-4 text-white" />;
+      case 'eng_eg':
+        return <Scale className="w-4 h-4 text-white" />;
+      case 'eng_ns':
+        return <EyeOff className="w-4 h-4 text-white" />;
+      case 'eng_baseline':
+        return <CheckCircle2 className="w-4 h-4 text-white" />;
+      case 'score_comp':
+        return <BarChart3 className="w-4 h-4 text-white" />;
+      case 'score_queue':
+        return <ListFilter className="w-4 h-4 text-white" />;
+      case 'eng_ai':
+        return <Bot className="w-4 h-4 text-white" />;
+      case 'gov_ledger':
+        return <BookLock className="w-4 h-4 text-white" />;
+      default:
+        return <Layers className="w-4 h-4 text-white" />;
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 p-6 overflow-hidden">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 mb-4 border-b border-slate-100 gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -267,8 +327,8 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
       {/* SVG Canvas */}
       <div className="w-full overflow-x-auto">
         <svg
-          viewBox="0 0 1170 380"
-          className="w-full min-w-[1020px] h-[380px] select-none"
+          viewBox="0 0 1240 380"
+          className="w-full min-w-[1180px] h-[380px] select-none"
         >
           <defs>
             <linearGradient id="flowGradRed" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -380,34 +440,59 @@ export const SupervisorySankeyFlow: React.FC<SupervisorySankeyFlowProps> = ({
 
       {/* Interactive Detail Inspector for Selected Node */}
       {selectedNode && (
-        <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span
-              className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-              style={{ backgroundColor: selectedNode.color }}
-            />
+        <div 
+          className="mt-4 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border"
+          style={{
+            background: 'linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 50%, #F8FAFC 100%)',
+            borderColor: '#FECACA'
+          }}
+        >
+          <div className="flex items-start gap-3.5">
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+              style={{ 
+                backgroundColor: selectedNode.color,
+                color: '#FFFFFF'
+              }}
+            >
+              {getNodeIcon(selectedNode.id)}
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-sm">{selectedNode.label}</span>
-                <span className="text-xs text-slate-500">({selectedNode.sublabel})</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-700">
-                  {selectedNode.category}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-[#0F172A] text-sm tracking-tight">{selectedNode.label}</span>
+                <span className="text-xs font-semibold text-slate-500">({selectedNode.sublabel})</span>
+                <span 
+                  className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-md border"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    color: selectedNode.color,
+                    borderColor: '#FCA5A5'
+                  }}
+                >
+                  STAGE: {selectedNode.category}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-2xl">
+              <p className="text-xs text-[#1E293B] font-medium mt-1.5 leading-relaxed max-w-3xl">
                 {selectedNode.details}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-bold">THROUGHPUT VOLUME</span>
-              <span className="font-mono font-bold text-slate-900">{selectedNode.totalVolume}</span>
+          <div className="flex items-center gap-4 shrink-0 text-xs self-end md:self-center">
+            <div 
+              className="px-3.5 py-1.5 rounded-lg border text-right"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#FCA5A5'
+              }}
+            >
+              <span className="text-[10px] text-[#991B1B] block font-bold tracking-wider">THROUGHPUT VOLUME</span>
+              <span className="font-mono font-extrabold text-sm text-[#0F172A]">{selectedNode.totalVolume}</span>
             </div>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-xs text-slate-400 hover:text-slate-700 p-1"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition cursor-pointer"
+              title="Close detail inspector"
             >
               ✕
             </button>

@@ -1838,14 +1838,6 @@ export const PeerComparisonView: React.FC<PeerComparisonViewProps> = ({
                 </span>
               </div>
             </div>
-
-            <div className="flex items-center justify-between gap-3 text-slate-500 pt-2 border-t border-slate-200">
-              <span className="font-bold tracking-wider shrink-0 text-slate-600 text-[10px]">SYNTHESIS ENGINE:</span>
-              <span className="font-bold text-emerald-900 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 font-sans text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>{aiSynthesis?.engine || 'Local Air-Gapped (Ollama / Qwen2.5:3B)'}</span>
-              </span>
-            </div>
           </div>
         </div>
       </div>

@@ -6,7 +6,8 @@ import {
   TrendingUp,
   ChevronRight,
   Printer,
-  ArrowRight
+  ArrowRight,
+  Database
 } from 'lucide-react';
 import { Entity, Finding, SilentAsset, ReviewSample, ValidationMetrics } from '../../types/domain';
 import { SupervisorySankeyFlow } from '../../components/SupervisorySankeyFlow';
@@ -38,7 +39,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-5">
       {/* Top Stat Cards - Elegant & Compact */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-3">
+        {/* Card 0: Multi-CSE Ingested Volume */}
+        <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-red-50/90 text-[#991B1B] border border-red-200/80 flex items-center justify-center shrink-0">
+              <Database className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block leading-tight">
+                Ingested Telemetry
+              </span>
+              <div className="flex items-baseline space-x-1.5 leading-tight mt-0.5 truncate">
+                <span className="text-sm font-black text-slate-900 font-mono">
+                  535,500+
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium truncate">
+                  Logs &amp; Cases
+                </span>
+              </div>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-50 text-[#991B1B] border border-red-200/70 shrink-0 ml-2">
+            500K+
+          </span>
+        </div>
+
         {/* Card 1: Supervisory Target */}
         <div className="bg-white border border-[#E2E8F0] px-3.5 py-2.5 rounded-xl shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] flex items-center justify-between hover:border-slate-300 transition">
           <div className="flex items-center space-x-2.5 min-w-0">
@@ -142,8 +168,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* End-to-End Supervisory Telemetry & Detection Sankey Flow */}
       <SupervisorySankeyFlow 
-        totalAlerts={validationMetrics?.totalAlertsInPool || (entities[0] as any)?.alert_count || 49999}
-        totalCases={validationMetrics?.totalCasesInPool || 24999}
+        totalAlerts={validationMetrics?.totalAlertsInPool || (entities[0] as any)?.alert_count || 535500}
+        totalCases={validationMetrics?.totalCasesInPool || 128400}
         totalAssets={(entities[0] as any)?.asset_count || 160}
         executionGapsCount={findings.filter(f => f.kind === 'execution_gap').length}
         silentAssetsCount={silentAssets.length}

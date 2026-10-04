@@ -20,6 +20,126 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+// Multi-color highlight tokenizer matching metrics, entities, findings, SLAs, and statutory directives
+function highlightStatutoryText(text: string): React.ReactNode {
+  if (!text) return null;
+
+  const pattern = /(CSE-[A-Z0-9-]+|\+\d+(?:\.\d+)?%|\b\d+(?:\.\d+)?%|execution\s+gap(?:\s+of\s+\+\d+(?:\.\d+)?%)?|Evidence\s+Quality(?:\s+score)?|headline\s+SLA(?:\s+compliance(?:\s+rate)?)?|SLA\s+compliance(?:\s+rate)?|Goodhart's\s+Law|Risk\s+Tier\s+CRITICAL|Composite\s+Score:\s*\d+\/100|Section\s+70A(?:\s+verification\s+directive)?|Section\s+65B|Section\s+70B|NCIIPC(?:\s+Guidelines)?(?:\s+v2\.4)?|IT\s+Act\s+2000|substantiated\s+supervisory\s+defects?|negative-space(?:\s+telemetry)?|operational\s+divergence|metric-satisficing\s+behavior|rapid\s+sub-threshold\s+alert\s+triage|unescalated\s+high-severity\s+security\s+incidents|high\s+lexical\s+repetition|Level\s+3\s+SOC|on-site\s+operational\s+review)/gi;
+
+  const parts = text.split(pattern);
+  return parts.map((part, i) => {
+    if (!part) return null;
+
+    // 1. Entity codes -> Indigo font with underline & subtle tint
+    if (/^CSE-[A-Z0-9-]+$/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-mono font-bold text-indigo-700 bg-indigo-50/90 underline decoration-indigo-400 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 2. Execution Gap, Risk Tier CRITICAL & Divergence -> Rose/Red font with underline & tint
+    if (/^\+\d/i.test(part) || /execution\s+gap|Risk\s+Tier\s+CRITICAL|operational\s+divergence|metric-satisficing/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-rose-700 bg-rose-50/90 underline decoration-rose-400 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 3. Evidence Quality & High-Rigor Verification -> Emerald font with underline & tint
+    if (/Evidence\s+Quality/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-emerald-800 bg-emerald-50/90 underline decoration-emerald-500 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 4. Headline SLAs & Percentages -> Amber font with underline & tint
+    if (/SLA|\d+(?:\.\d+)?%/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-amber-800 bg-amber-50/90 underline decoration-amber-500 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 5. Statutory Directives & Legal Acts -> Sky/Blue font with underline & tint
+    if (/NCIIPC|Section\s+70A|Section\s+65B|Section\s+70B|IT\s+Act\s+2000/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-blue-800 bg-blue-50/90 underline decoration-blue-500 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 6. Forensic Defects & Blindspots -> Purple font with underline & tint
+    if (/substantiated\s+supervisory\s+defects?|negative-space|rapid\s+sub-threshold|unescalated\s+high-severity|high\s+lexical\s+repetition/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-purple-800 bg-purple-50/90 underline decoration-purple-400 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 7. Supervisory Action, Inspection & Composite Score -> Cyan font with underline & tint
+    if (/Composite\s+Score|Level\s+3\s+SOC|on-site\s+operational\s+review/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-cyan-900 bg-cyan-50/90 underline decoration-cyan-500 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    // 8. Goodhart's Law -> Dark Slate badge
+    if (/Goodhart/i.test(part)) {
+      return (
+        <span
+          key={i}
+          className="font-bold text-slate-900 bg-slate-100 underline decoration-slate-400 decoration-2 underline-offset-2 px-1 py-0.5 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    return part;
+  });
+}
+
+// Helper to walk React children and highlight text nodes
+function formatReactChildren(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === 'string') {
+      return highlightStatutoryText(child);
+    }
+    return child;
+  });
+}
+
 
 interface StatutoryReportModalProps {
   isOpen: boolean;
@@ -221,7 +341,7 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
       }}
     >
       {/* Modal Container */}
-      <div className="sar-modal-container bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="sar-modal-container bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Modal Action Header (Excluded when printing) */}
         <div className="sar-modal-header print:hidden bg-[#111827] text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
@@ -474,10 +594,6 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
                 <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Air-Gapped AI Supervisory Narrative Synthesis
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {copilotData?.engine || 'Local Air-Gapped (Ollama / Qwen2.5:3B)'}
-                </span>
               </div>
               <button
                 type="button"
@@ -503,12 +619,28 @@ export const StatutoryReportModal: React.FC<StatutoryReportModalProps> = ({
                       h1: ({ node, ...props }) => <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2 mt-1" {...props} />,
                       h2: ({ node, ...props }) => <h4 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-0.5 mb-1 mt-2.5" {...props} />,
                       h3: ({ node, ...props }) => <h5 className="text-[11px] font-bold text-slate-900 mb-1 mt-2" {...props} />,
-                      p: ({ node, ...props }) => <p className="text-[11px] leading-relaxed text-slate-700 mb-2 last:mb-0" {...props} />,
-                      strong: ({ node, ...props }) => <strong className="font-extrabold text-slate-900" {...props} />,
+                      p: ({ node, children, ...props }) => (
+                        <p className="text-[11px] leading-relaxed text-slate-700 mb-2 last:mb-0" {...props}>
+                          {formatReactChildren(children)}
+                        </p>
+                      ),
+                      strong: ({ node, children, ...props }) => (
+                        <strong className="font-extrabold text-slate-900" {...props}>
+                          {formatReactChildren(children)}
+                        </strong>
+                      ),
                       ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-1.5 text-[11px]" {...props} />,
                       ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-1.5 text-[11px]" {...props} />,
-                      li: ({ node, ...props }) => <li className="text-[11px] text-slate-700" {...props} />,
-                      blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-[#991B1B] pl-2.5 py-0.5 text-[11px] italic text-slate-600 bg-red-50/40 rounded-r my-2" {...props} />,
+                      li: ({ node, children, ...props }) => (
+                        <li className="text-[11px] text-slate-700" {...props}>
+                          {formatReactChildren(children)}
+                        </li>
+                      ),
+                      blockquote: ({ node, children, ...props }) => (
+                        <blockquote className="border-l-2 border-[#991B1B] pl-2.5 py-0.5 text-[11px] italic text-slate-600 bg-red-50/40 rounded-r my-2" {...props}>
+                          {formatReactChildren(children)}
+                        </blockquote>
+                      ),
                       code: ({ node, inline, ...props }: any) => inline 
                         ? <code className="font-mono text-[10px] bg-slate-100 px-1 py-0.5 rounded text-red-700 border border-slate-200" {...props} />
                         : <pre className="font-mono text-[10px] bg-slate-900 text-slate-200 p-2.5 rounded-md overflow-x-auto my-2"><code {...props} /></pre>

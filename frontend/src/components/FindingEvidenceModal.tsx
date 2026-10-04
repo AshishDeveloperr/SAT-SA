@@ -294,23 +294,23 @@ export const FindingEvidenceModal: React.FC<FindingEvidenceModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* Modal Header (Red Theme) */}
         <div className="px-6 py-4 border-b border-red-800/20 flex items-center justify-between bg-gradient-to-r from-red-600 via-red-600 to-red-700 text-white shrink-0">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-white/15 text-white border border-white/20 shadow-sm flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-white/15 text-white shadow-sm flex items-center justify-center shrink-0">
               <Terminal className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/20 text-white border border-white/30">
+                <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/20 text-white">
                   {finding.rule_key}
                 </span>
                 <span className="text-xs text-red-100 font-mono font-medium">
                   {entityCode}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-black/20 text-red-100 border border-white/20 px-2 py-0.5 rounded font-mono">
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-black/20 text-red-100 px-2 py-0.5 rounded font-mono">
                   Severity: {finding.severity_score || 100}
                 </span>
               </div>
