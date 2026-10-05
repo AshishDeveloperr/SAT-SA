@@ -34,6 +34,11 @@ async function startServer() {
 `);
     });
 
+    // Support massive 50K-100K alert uploads without ECONNRESET or socket drop
+    server.timeout = 600000;
+    server.keepAliveTimeout = 610000;
+    server.headersTimeout = 620000;
+
     const handleShutdown = (signal) => {
       console.log(`\n[SAT-SA] Received ${signal}. Shutting down gracefully...`);
       server.close(() => {

@@ -398,7 +398,26 @@ export function App() {
                 handleToggleCompareEntity={handleToggleCompareEntity}
                 handleLaunchComparison={handleLaunchComparison}
                 handleClearCompareSelection={handleClearCompareSelection}
-                setSelectedEntityGap={setSelectedEntityGap}
+                setSelectedEntityGap={(gap) => {
+                  setSelectedEntityGap(gap);
+                  // Find matching finding for this entity, or create a rich forensic finding so modal displays immediately
+                  const entityFindings = findings.filter(f => 
+                    f.entity_id === gap.entityId || 
+                    (f as any).entity_code === gap.entityCode ||
+                    (gap.entityCode && f.title?.includes(gap.entityCode))
+                  );
+                  const targetFinding = entityFindings[0] || {
+                    id: `gap-inspect-${gap.entityCode}`,
+                    rule_key: (gap.executionGapSize || 0) > 40 ? 'EG-01' : 'EG-02',
+                    title: `${gap.entityCode}: ${gap.executionGapSize}% Operational Execution Gap vs Reported SLA`,
+                    kind: 'EXECUTION_GAP',
+                    severity_score: gap.executionGapSize || 85,
+                    description: `Supervisory analysis detected severe divergence: Entity reported ${gap.headlineSlaPct}% SLA compliance, but underlying telemetry indicates an Evidence Quality Score of only ${gap.evidenceQualityScore}%.`,
+                    entity_code: gap.entityCode,
+                    entity_id: gap.entityId
+                  };
+                  setInspectingFinding(targetFinding as any);
+                }}
               />
             )}
 

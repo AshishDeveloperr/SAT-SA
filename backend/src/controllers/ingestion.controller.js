@@ -143,25 +143,30 @@ export async function ingestPayload(req, res) {
       const records = parseCsv(af.content, { columns: true, skip_empty_lines: true, trim: true });
       totalAssetsParsed += records.length;
       const now = Date.now();
+      const existingAssetIds = new Set((await db('assets').select('id')).map(r => r.id));
+      const newAssets = [];
+
       for (const row of records) {
         const astId = row.asset_id || row.id || row.external_id;
-        if (!astId) continue;
+        if (!astId || existingAssetIds.has(astId)) continue;
+        existingAssetIds.add(astId);
 
-        const existingAst = await db('assets').where('id', astId).first();
-        if (!existingAst) {
-          await db('assets').insert({
-            id: astId,
-            entity_id: entity.id,
-            external_id: row.external_id || astId,
-            name: row.name || `${astId} Monitored Device`,
-            type: row.type || 'SERVER',
-            criticality: parseInt(row.criticality || '3', 10) || 3,
-            environment: row.environment || 'PRODUCTION',
-            first_seen: new Date(now - 90 * 86400000),
-            last_seen: row.last_seen ? new Date(row.last_seen) : new Date()
-          });
-          assetsInserted++;
-        }
+        newAssets.push({
+          id: astId,
+          entity_id: entity.id,
+          external_id: row.external_id || astId,
+          name: row.name || `${astId} Monitored Device`,
+          type: row.type || 'SERVER',
+          criticality: parseInt(row.criticality || '3', 10) || 3,
+          environment: row.environment || 'PRODUCTION',
+          first_seen: new Date(now - 90 * 86400000),
+          last_seen: row.last_seen ? new Date(row.last_seen) : new Date()
+        });
+      }
+
+      if (newAssets.length > 0) {
+        await db.batchInsert('assets', newAssets, 500);
+        assetsInserted += newAssets.length;
       }
     } catch (e) {
       console.warn(`[Ingest] Failed parsing asset file ${af.fileName}:`, e.message);
@@ -174,45 +179,54 @@ export async function ingestPayload(req, res) {
     try {
       const records = parseCsv(cf.content, { columns: true, skip_empty_lines: true, trim: true });
       totalCasesParsed += records.length;
+      const existingCaseIds = new Set((await db('cases').select('id')).map(r => r.id));
+      const newCases = [];
+      const newSteps = [];
+
       for (const row of records) {
         const cId = row.case_id || row.id || row.external_id;
-        if (!cId) continue;
+        if (!cId || existingCaseIds.has(cId)) continue;
+        existingCaseIds.add(cId);
 
-        const existingCase = await db('cases').where('id', cId).first();
-        if (!existingCase) {
-          const openedAt = row.opened_at ? new Date(row.opened_at) : new Date();
-          const closedAt = row.closed_at ? new Date(row.closed_at) : null;
-          const hasRootCause = Boolean(row.root_cause && row.root_cause !== 'UNDETERMINED');
+        const openedAt = row.opened_at ? new Date(row.opened_at) : new Date();
+        const closedAt = row.closed_at ? new Date(row.closed_at) : null;
+        const hasRootCause = Boolean(row.root_cause && row.root_cause !== 'UNDETERMINED');
 
-          await db('cases').insert({
-            id: cId,
+        newCases.push({
+          id: cId,
+          entity_id: entity.id,
+          external_id: row.external_id || cId,
+          opened_at: openedAt,
+          closed_at: closedAt,
+          status: row.status || 'CLOSED',
+          severity: (row.severity || 'HIGH').toUpperCase(),
+          resolution: row.resolution || 'RESOLVED',
+          root_cause_recorded: hasRootCause
+        });
+
+        if (row.investigation_notes && row.investigation_notes.trim().length > 0) {
+          const stepId = `step_${cId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          newSteps.push({
+            id: stepId,
+            case_id: cId,
+            alert_id: row.alert_id || null,
             entity_id: entity.id,
-            external_id: row.external_id || cId,
-            opened_at: openedAt,
-            closed_at: closedAt,
-            status: row.status || 'CLOSED',
-            severity: (row.severity || 'HIGH').toUpperCase(),
-            resolution: row.resolution || 'RESOLVED',
-            root_cause_recorded: hasRootCause
+            actor_hash: crypto.createHash('sha256').update(row.assignee || 'anon').digest('hex').slice(0, 16),
+            step_type: 'TRIAGE_ANALYSIS',
+            started_at: openedAt,
+            ended_at: closedAt || openedAt,
+            note_len: row.investigation_notes.length,
+            note_text: row.investigation_notes
           });
-          casesInserted++;
-
-          if (row.investigation_notes && row.investigation_notes.trim().length > 0) {
-            const stepId = `step_${cId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-            await db('investigation_steps').insert({
-              id: stepId,
-              case_id: cId,
-              alert_id: row.alert_id || null,
-              entity_id: entity.id,
-              actor_hash: crypto.createHash('sha256').update(row.assignee || 'anon').digest('hex').slice(0, 16),
-              step_type: 'TRIAGE_ANALYSIS',
-              started_at: openedAt,
-              ended_at: closedAt || openedAt,
-              note_len: row.investigation_notes.length,
-              note_text: row.investigation_notes
-            });
-          }
         }
+      }
+
+      if (newCases.length > 0) {
+        await db.batchInsert('cases', newCases, 500);
+        casesInserted += newCases.length;
+      }
+      if (newSteps.length > 0) {
+        await db.batchInsert('investigation_steps', newSteps, 500);
       }
     } catch (e) {
       console.warn(`[Ingest] Failed parsing cases file ${cf.fileName}:`, e.message);
@@ -226,32 +240,37 @@ export async function ingestPayload(req, res) {
     if (tf.role === 'JSON_SUITE') {
       try {
         const parsedJson = JSON.parse(tf.content);
-        // Handle embedded assets in JSON
         if (Array.isArray(parsedJson.assets)) {
           totalAssetsParsed += parsedJson.assets.length;
+          const existingAstIds = new Set((await db('assets').select('id')).map(r => r.id));
+          const newAsts = [];
           for (const ast of parsedJson.assets) {
             const astId = ast.external_id || ast.asset_id || ast.id;
-            if (!astId) continue;
-            const existingAst = await db('assets').where('id', astId).first();
-            if (!existingAst) {
-              await db('assets').insert({
-                id: astId,
-                entity_id: entity.id,
-                external_id: astId,
-                name: ast.name || `${astId} Monitored Device`,
-                type: ast.type || 'SERVER',
-                criticality: parseInt(ast.criticality || '3', 10) || 3,
-                environment: ast.environment || 'PRODUCTION',
-                first_seen: new Date(),
-                last_seen: ast.last_seen ? new Date(ast.last_seen) : new Date()
-              });
-              assetsInserted++;
-            }
+            if (!astId || existingAstIds.has(astId)) continue;
+            existingAstIds.add(astId);
+            newAsts.push({
+              id: astId,
+              entity_id: entity.id,
+              external_id: astId,
+              name: ast.name || `${astId} Monitored Device`,
+              type: ast.type || 'SERVER',
+              criticality: parseInt(ast.criticality || '3', 10) || 3,
+              environment: ast.environment || 'PRODUCTION',
+              first_seen: new Date(),
+              last_seen: ast.last_seen ? new Date(ast.last_seen) : new Date()
+            });
+          }
+          if (newAsts.length > 0) {
+            await db.batchInsert('assets', newAsts, 500);
+            assetsInserted += newAsts.length;
           }
         }
-        // Handle embedded alerts in JSON
+        
         const jsonAlerts = Array.isArray(parsedJson) ? parsedJson : (parsedJson.alerts || parsedJson.events || []);
         totalAlertsParsed += jsonAlerts.length;
+        const existingAltIds = new Set((await db('alerts').select('id')).map(r => r.id));
+        const newAlts = [];
+
         for (const al of jsonAlerts) {
           const rawSev = (al.severity || 'MEDIUM').toUpperCase();
           const sev = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(rawSev) ? rawSev : 'MEDIUM';
@@ -259,94 +278,67 @@ export async function ingestPayload(req, res) {
           const cat = al.category || 'Security Event';
           categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
 
-          const alId = al.alert_id || al.external_id || al.id || `alt_${entity.id}_${Date.now()}_${insertedAlerts}`;
-          const existing = await db('alerts').where('id', alId).first();
-          if (!existing) {
-            if (al.asset_id) {
-              const ast = await db('assets').where('id', al.asset_id).first();
-              if (!ast) {
-                await db('assets').insert({
-                  id: al.asset_id,
-                  entity_id: entity.id,
-                  external_id: al.asset_id,
-                  name: `${al.asset_id} Supervised Device`,
-                  type: 'NETWORK_NODE',
-                  criticality: sev === 'CRITICAL' ? 5 : (sev === 'HIGH' ? 4 : 3),
-                  environment: 'PRODUCTION',
-                  first_seen: new Date(),
-                  last_seen: new Date()
-                });
-                assetsInserted++;
-              }
-            }
+          const alId = al.alert_id || al.external_id || al.id || `alt_${entity.id}_${Date.now()}_${newAlts.length}`;
+          if (existingAltIds.has(alId)) continue;
+          existingAltIds.add(alId);
 
-            await db('alerts').insert({
-              id: alId,
-              entity_id: entity.id,
-              batch_id: batchId,
-              external_id: alId,
-              asset_id: al.asset_id || null,
-              category: cat,
-              severity: sev,
-              created_at: al.created_at ? new Date(al.created_at) : new Date(),
-              closed_at: al.closed_at ? new Date(al.closed_at) : null,
-              disposition: al.disposition || 'RESOLVED',
-              assignee_hash: crypto.createHash('sha256').update(al.assignee || 'anon').digest('hex').slice(0, 16)
-            });
-            insertedAlerts++;
-          }
+          newAlts.push({
+            id: alId,
+            entity_id: entity.id,
+            batch_id: batchId,
+            external_id: alId,
+            asset_id: al.asset_id || null,
+            category: cat,
+            severity: sev,
+            created_at: al.created_at ? new Date(al.created_at) : new Date(),
+            closed_at: al.closed_at ? new Date(al.closed_at) : null,
+            disposition: al.disposition || 'RESOLVED',
+            assignee_hash: crypto.createHash('sha256').update(al.assignee || 'anon').digest('hex').slice(0, 16)
+          });
+        }
+
+        if (newAlts.length > 0) {
+          await db.batchInsert('alerts', newAlts, 500);
+          insertedAlerts += newAlts.length;
         }
       } catch (e) {
         console.warn(`[Ingest] Failed parsing JSON suite ${tf.fileName}:`, e.message);
       }
     } else if (tf.role === 'LOG') {
-      // Parse Syslog / CEF / text logs using scratch parser
       const tempFile = path.resolve(process.cwd(), `scratch_ingest_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.log`);
       try {
         fs.writeFileSync(tempFile, tf.content);
         const parsed = await parseMultiFormatFile(tempFile, entityCode);
         totalAlertsParsed += parsed.alerts.length;
-        
+        const existingAltIds = new Set((await db('alerts').select('id')).map(r => r.id));
+        const newAlts = [];
+
         for (const al of parsed.alerts) {
           severityBreakdown[al.severity] = (severityBreakdown[al.severity] || 0) + 1;
           categoryBreakdown[al.category] = (categoryBreakdown[al.category] || 0) + 1;
 
-          if (al.asset_id) {
-            const ast = await db('assets').where('id', al.asset_id).first();
-            if (!ast) {
-              await db('assets').insert({
-                id: al.asset_id,
-                entity_id: entity.id,
-                external_id: al.asset_id,
-                name: `${al.asset_id} Supervised Device`,
-                type: 'NETWORK_NODE',
-                criticality: al.severity === 'CRITICAL' ? 5 : (al.severity === 'HIGH' ? 4 : 3),
-                environment: 'PRODUCTION',
-                first_seen: new Date(),
-                last_seen: new Date(al.created_at)
-              });
-              assetsInserted++;
-            }
-          }
-
           const alId = `alt_${entity.id}_${al.external_id}`;
-          const existing = await db('alerts').where('id', alId).first();
-          if (!existing) {
-            await db('alerts').insert({
-              id: alId,
-              entity_id: entity.id,
-              batch_id: batchId,
-              external_id: al.external_id,
-              asset_id: al.asset_id,
-              category: al.category,
-              severity: al.severity,
-              created_at: new Date(al.created_at),
-              closed_at: al.closed_at ? new Date(al.closed_at) : null,
-              disposition: al.disposition,
-              assignee_hash: crypto.createHash('sha256').update(al.assignee || 'anon').digest('hex').slice(0, 16)
-            });
-            insertedAlerts++;
-          }
+          if (existingAltIds.has(alId)) continue;
+          existingAltIds.add(alId);
+
+          newAlts.push({
+            id: alId,
+            entity_id: entity.id,
+            batch_id: batchId,
+            external_id: al.external_id,
+            asset_id: al.asset_id,
+            category: al.category,
+            severity: al.severity,
+            created_at: new Date(al.created_at),
+            closed_at: al.closed_at ? new Date(al.closed_at) : null,
+            disposition: al.disposition,
+            assignee_hash: crypto.createHash('sha256').update(al.assignee || 'anon').digest('hex').slice(0, 16)
+          });
+        }
+
+        if (newAlts.length > 0) {
+          await db.batchInsert('alerts', newAlts, 500);
+          insertedAlerts += newAlts.length;
         }
       } catch (e) {
         console.warn(`[Ingest] Failed parsing log file ${tf.fileName}:`, e.message);
@@ -358,6 +350,11 @@ export async function ingestPayload(req, res) {
       try {
         const records = parseCsv(tf.content, { columns: true, skip_empty_lines: true, trim: true });
         totalAlertsParsed += records.length;
+        const existingAltIds = new Set((await db('alerts').select('id')).map(r => r.id));
+        const existingAstIds = new Set((await db('assets').select('id')).map(r => r.id));
+        const newAsts = [];
+        const newAlts = [];
+
         for (const row of records) {
           const alId = row.alert_id || row.id || row.external_id;
           if (!alId) continue;
@@ -368,41 +365,47 @@ export async function ingestPayload(req, res) {
           const cat = row.category || 'Security Event';
           categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
 
-          if (row.asset_id) {
-            const ast = await db('assets').where('id', row.asset_id).first();
-            if (!ast) {
-              await db('assets').insert({
-                id: row.asset_id,
-                entity_id: entity.id,
-                external_id: row.asset_id,
-                name: `${row.asset_id} Supervised Device`,
-                type: 'NETWORK_NODE',
-                criticality: sev === 'CRITICAL' ? 5 : (sev === 'HIGH' ? 4 : 3),
-                environment: 'PRODUCTION',
-                first_seen: new Date(),
-                last_seen: row.created_at ? new Date(row.created_at) : new Date()
-              });
-              assetsInserted++;
-            }
+          if (row.asset_id && !existingAstIds.has(row.asset_id)) {
+            existingAstIds.add(row.asset_id);
+            newAsts.push({
+              id: row.asset_id,
+              entity_id: entity.id,
+              external_id: row.asset_id,
+              name: `${row.asset_id} Supervised Device`,
+              type: 'NETWORK_NODE',
+              criticality: sev === 'CRITICAL' ? 5 : (sev === 'HIGH' ? 4 : 3),
+              environment: 'PRODUCTION',
+              first_seen: new Date(),
+              last_seen: row.created_at ? new Date(row.created_at) : new Date()
+            });
           }
 
-          const existing = await db('alerts').where('id', alId).first();
-          if (!existing) {
-            await db('alerts').insert({
-              id: alId,
-              entity_id: entity.id,
-              batch_id: batchId,
-              external_id: alId,
-              asset_id: row.asset_id || null,
-              category: cat,
-              severity: sev,
-              created_at: row.created_at ? new Date(row.created_at) : new Date(),
-              closed_at: row.closed_at ? new Date(row.closed_at) : null,
-              disposition: row.disposition || 'RESOLVED',
-              assignee_hash: crypto.createHash('sha256').update(row.assignee || 'anon').digest('hex').slice(0, 16)
-            });
-            insertedAlerts++;
-          }
+          if (existingAltIds.has(alId)) continue;
+          existingAltIds.add(alId);
+
+          newAlts.push({
+            id: alId,
+            entity_id: entity.id,
+            batch_id: batchId,
+            external_id: alId,
+            asset_id: row.asset_id || null,
+            category: cat,
+            severity: sev,
+            created_at: row.created_at ? new Date(row.created_at) : new Date(),
+            closed_at: row.closed_at ? new Date(row.closed_at) : null,
+            disposition: row.disposition || 'RESOLVED',
+            assignee_hash: crypto.createHash('sha256').update(row.assignee || 'anon').digest('hex').slice(0, 16)
+          });
+        }
+
+        if (newAsts.length > 0) {
+          await db.batchInsert('assets', newAsts, 500);
+          assetsInserted += newAsts.length;
+        }
+
+        if (newAlts.length > 0) {
+          await db.batchInsert('alerts', newAlts, 500);
+          insertedAlerts += newAlts.length;
         }
       } catch (e) {
         console.warn(`[Ingest] Failed parsing alerts CSV ${tf.fileName}:`, e.message);

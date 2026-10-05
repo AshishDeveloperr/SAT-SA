@@ -453,31 +453,42 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
     }
   };
 
+  const dragCounterRef = useRef<number>(0);
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    e.dataTransfer.dropEffect = 'copy';
   };
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current = 0;
     setIsDragging(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(e.dataTransfer.files);
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      processFiles(droppedFiles);
     }
   };
 
@@ -1133,26 +1144,26 @@ export const EvidenceIngestionEnclave: React.FC<EvidenceIngestionEnclaveProps> =
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition select-none ${
+                    className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition select-none ${
                       isDragging 
                         ? 'border-red-600 bg-red-50/70 scale-[1.01] shadow-md ring-4 ring-red-500/10' 
                         : 'border-slate-300 hover:border-red-500 bg-slate-50/50 hover:bg-red-50/20'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition ${
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition pointer-events-none ${
                       isDragging 
                         ? 'bg-red-600 text-white scale-110 shadow-lg animate-bounce' 
                         : 'bg-red-50 text-red-600 border border-red-100 group-hover:scale-110'
                     }`}>
                       <FileSpreadsheet className="w-6 h-6" />
                     </div>
-                    <span className="text-sm font-bold text-slate-800">
+                    <span className="text-sm font-bold text-slate-800 pointer-events-none">
                       {isDragging ? 'Drop Regulatory Evidence Files Here' : 'Click to Browse or Drag & Drop Multiple Files Here'}
                     </span>
-                    <span className="text-xs text-slate-500 mt-1">
+                    <span className="text-xs text-slate-500 mt-1 pointer-events-none">
                       Select or drag alerts.csv, cases.csv, assets.csv or system logs
                     </span>
-                    <span className="text-[11px] text-slate-400 mt-0.5">
+                    <span className="text-[11px] text-slate-400 mt-0.5 pointer-events-none">
                       Supports multi-file CSV, JSON, Syslog, LOG, and CEF batch suites
                     </span>
                     <input

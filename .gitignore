@@ -27,3 +27,6 @@ Thumbs.db
 
 # Sample datasets & large benchmark files
 samples/
+
+# Documentation & internal planning
+plan/

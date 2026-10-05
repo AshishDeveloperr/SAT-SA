@@ -236,8 +236,8 @@ export const ProblemSection: React.FC = () => {
             style={{
               position: 'absolute',
               top: '-48px',
-              right: '160px',
-              width: '295px',
+              right: '140px',
+              width: '335px',
               minHeight: '105px',
               backgroundColor: '#FFFFFF',
               color: '#0F172A',
@@ -253,13 +253,20 @@ export const ProblemSection: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0F172A', display: 'inline-block' }}></span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>[CRITICAL] Alert Tier</span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#991B1B', display: 'inline-block' }}></span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ backgroundColor: '#991B1B', color: '#FFFFFF', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>[CRITICAL]</span>
+                  <span style={{ color: '#0F172A' }}>Alert Tier</span>
+                </span>
               </div>
               <span style={{ fontSize: '0.64rem', padding: '2px 7px', background: '#FEE2E2', color: '#991B1B', borderRadius: '4px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>Mandatory Audit</span>
             </div>
-            <p style={{ fontSize: '0.73rem', color: '#475569', margin: 0, lineHeight: 1.45, whiteSpace: 'normal' }}>
-              High-severity SCADA trigger requiring supervisory L2 sign-off under national standard.
+            <p style={{ fontSize: '0.73rem', color: '#475569', margin: 0, lineHeight: 1.5, whiteSpace: 'normal' }}>
+              High-severity SCADA trigger{' '}
+              <span style={{ backgroundColor: '#991B1B', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block' }}>
+                closed in 3 minutes
+              </span>{' '}
+              without required supervisory L2 sign-off.
             </p>
           </div>
 
@@ -619,8 +626,14 @@ export const ProblemSection: React.FC = () => {
           {/* Mobile/Tablet Fallback Cards (Visible on screens < xl, cleanly stacked below terminal) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 xl:hidden">
             <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-              <span className="text-xs font-bold text-slate-900 block">[CRITICAL] Alert Tier</span>
-              <span className="text-[11px] text-slate-600">High-severity SCADA trigger requiring supervisory L2 sign-off under national standard.</span>
+              <span className="text-xs font-bold text-slate-900 block mb-1">
+                <span className="bg-[#991B1B] text-white px-1.5 py-0.5 rounded font-extrabold mr-1">[CRITICAL]</span> Alert Tier
+              </span>
+              <span className="text-[11px] text-slate-600">
+                High-severity SCADA trigger{' '}
+                <span className="bg-[#991B1B] text-white px-1.5 py-0.5 rounded font-bold">closed in 3 minutes</span>{' '}
+                without supervisory L2 sign-off.
+              </span>
             </div>
             <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
               <span className="text-xs font-bold text-blue-700 block">SCADA Threat Signature</span>
