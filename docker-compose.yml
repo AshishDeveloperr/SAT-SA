@@ -1,17 +1,15 @@
-version: '3.8'
-
 services:
-  # 1. Reverse Proxy & Static Asset Gateway
+  # 1. Reverse Proxy & Frontend Web Gateway
   gateway:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: satsa-gateway:latest
     container_name: satsa-gateway
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-    volumes:
-      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./frontend/dist:/usr/share/nginx/html:ro
     depends_on:
       - api
     networks:
@@ -22,6 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: satsa-api:latest
     container_name: satsa-api
     restart: unless-stopped
     environment:
@@ -78,4 +77,3 @@ networks:
 volumes:
   satsa-pgdata:
   satsa-ollama-data:
-
